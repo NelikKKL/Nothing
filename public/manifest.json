@@ -1,0 +1,16 @@
+{
+  "name": "NS Messenger",
+  "short_name": "NSMsg",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#121212",
+  "theme_color": "#ff0000",
+  "description": "Secure AES-256 Messenger via Email Transport",
+  "icons": [
+    {
+      "src": "vite.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
