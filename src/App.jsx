@@ -13,6 +13,7 @@ function App() {
   const [user, setUser] = useState(null);
   const [regName, setRegName] = useState('');
   const [regEmail, setRegEmail] = useState('');
+  const [googleClientId, setGoogleClientId] = useState(localStorage.getItem('ns_google_client_id') || '');
   
   const [activeChat, setActiveChat] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -20,7 +21,7 @@ function App() {
   const [sessionKey, setSessionKey] = useState(null);
   const [isTransporting, setIsTransporting] = useState(false);
   const [transportStatus, setTransportStatus] = useState('');
-  
+
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [chats, setChats] = useState([]);
   const [isAddContactOpen, setIsAddContactOpen] = useState(false);
@@ -35,6 +36,41 @@ function App() {
     const savedChats = localStorage.getItem('ns_chats');
     if (savedChats) setChats(JSON.parse(savedChats));
   }, []);
+
+  const handleGoogleLogin = () => {
+    if (!googleClientId) {
+      const id = prompt("Введите ваш Google Client ID (из Google Cloud Console):");
+      if (id) {
+        setGoogleClientId(id);
+        localStorage.setItem('ns_google_client_id', id);
+      } else return;
+    }
+
+    try {
+      const client = window.google.accounts.oauth2.initTokenClient({
+        client_id: googleClientId,
+        scope: 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send',
+        callback: (response) => {
+          if (response.access_token) {
+            emailService.setAccessToken(response.access_token);
+            // Получаем данные профиля через токен
+            fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+              headers: { Authorization: `Bearer ${response.access_token}` }
+            })
+            .then(res => res.json())
+            .then(data => {
+              const newUser = { name: data.name, email: data.email, avatar: data.picture };
+              localStorage.setItem('ns_user', JSON.stringify(newUser));
+              setUser(newUser);
+            });
+          }
+        },
+      });
+      client.requestAccessToken();
+    } catch (e) {
+      alert("Ошибка Google Auth. Проверьте Client ID в настройках.");
+    }
+  };
 
   useEffect(() => {
     if (chats.length > 0) localStorage.setItem('ns_chats', JSON.stringify(chats));
@@ -203,78 +239,266 @@ function App() {
             </div>
             <button type="submit" className="mt-4 bg-[#ff0000] hover:bg-[#cc0000] text-white py-4 rounded-xl font-black uppercase tracking-widest flex items-center justify-center gap-3 transition-all active:scale-95 shadow-lg shadow-[#ff000022]">Инициализировать <ArrowRight size={20} /></button>
           </form>
+
+          <div className="relative my-8">
+            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-[#1a1a1a]"></div></div>
+            <div className="relative flex justify-center text-[10px] uppercase font-bold tracking-widest"><span className="bg-[#0a0a0a] px-4 text-[#444]">или через Google</span></div>
+          </div>
+
+          <button 
+            onClick={handleGoogleLogin}
+            className="w-full bg-white hover:bg-[#f0f0f0] text-black py-4 rounded-xl font-black uppercase tracking-widest flex items-center justify-center gap-3 transition-all active:scale-95 shadow-lg"
+          >
+            <img src="https://www.google.com/favicon.ico" className="w-5 h-5" alt="G" /> Войти через Google
+          </button>
         </motion.div>
       </div>
     );
   }
 
   return (
-    <div className="flex h-screen bg-black text-white font-sans overflow-hidden">
-      <AnimatePresence>{!isSidebarOpen && (<motion.button initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsSidebarOpen(true)} className="fixed bottom-6 left-6 z-50 p-4 bg-[#ff0000] rounded-full shadow-xl shadow-[#ff000044] md:hidden"><Menu size={24} /></motion.button>)}</AnimatePresence>
-      <motion.div initial={false} animate={{ width: isSidebarOpen ? '320px' : '0px', opacity: isSidebarOpen ? 1 : 0 }} className={cn("h-full bg-[#050505] border-r border-[#1a1a1a] flex flex-col z-40 overflow-hidden relative", !isSidebarOpen && "border-none")} />
-      <div className="fixed top-0 left-0 h-full flex flex-col bg-[#050505] border-r border-[#1a1a1a] z-40 transition-all duration-300" style={{ width: isSidebarOpen ? '320px' : '0px', visibility: isSidebarOpen ? 'visible' : 'hidden' }}>
-        <div className="p-6 border-b border-[#1a1a1a] flex justify-between items-center bg-[#080808]">
-          <div className="flex items-center gap-3"><div className="p-2 bg-[#1a0000] rounded-lg text-[#ff0000]"><Shield size={20} /></div><h1 className="text-lg font-black uppercase tracking-tighter">NS MSGR</h1></div>
-          <button onClick={() => setIsSidebarOpen(false)} className="p-2 hover:bg-[#111] rounded-lg text-[#444] transition-colors"><ChevronLeft size={20} /></button>
+    <div className="flex h-screen bg-black text-white font-sans overflow-hidden selection:bg-[#ff0000] selection:text-white">
+      {/* Mobile Sidebar Toggle - Made smaller and more stylish */}
+      <AnimatePresence>
+        {!isSidebarOpen && (
+          <motion.button 
+            initial={{ opacity: 0, x: -20 }} 
+            animate={{ opacity: 1, x: 0 }} 
+            exit={{ opacity: 0, x: -20 }} 
+            onClick={() => setIsSidebarOpen(true)} 
+            className="fixed top-6 left-6 z-50 p-3 bg-[#111] border border-[#ff0000] rounded-xl shadow-[0_0_15px_rgba(255,0,0,0.2)] md:hidden text-[#ff0000]"
+          >
+            <Menu size={20} />
+          </motion.button>
+        )}
+      </AnimatePresence>
+
+      <motion.div 
+        initial={false} 
+        animate={{ width: isSidebarOpen ? '320px' : '0px', opacity: isSidebarOpen ? 1 : 0 }} 
+        className={cn("h-full bg-[#050505] border-r border-[#ff000033] flex flex-col z-40 overflow-hidden relative", !isSidebarOpen && "border-none")} 
+      />
+
+      <div className="fixed top-0 left-0 h-full flex flex-col bg-[#050505] border-r border-[#ff000033] z-40 transition-all duration-300 shadow-[10px_0_30px_rgba(0,0,0,0.5)]" style={{ width: isSidebarOpen ? '320px' : '0px', visibility: isSidebarOpen ? 'visible' : 'hidden' }}>
+        <div className="p-6 border-b border-[#ff000022] flex justify-between items-center bg-[#080808]">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-[#ff000011] border border-[#ff000044] rounded-lg text-[#ff0000] shadow-[0_0_10px_rgba(255,0,0,0.1)]">
+              <Shield size={20} />
+            </div>
+            <h1 className="text-lg font-black uppercase tracking-tighter text-white">NS <span className="text-[#ff0000]">MSGR</span></h1>
+          </div>
+          <button onClick={() => setIsSidebarOpen(false)} className="p-2 hover:bg-[#ff000011] rounded-lg text-[#444] hover:text-[#ff0000] transition-all">
+            <ChevronLeft size={20} />
+          </button>
         </div>
-        <div className="p-4 bg-[#0a0a0a] border-b border-[#1a1a1a] flex items-center gap-3 group">
-          <div className="w-10 h-10 bg-[#111] border border-[#222] rounded-full flex items-center justify-center text-[#ff0000]"><User size={20} /></div>
-          <div className="flex-1 min-w-0"><p className="text-sm font-bold truncate uppercase tracking-tight">{user.name}</p><p className="text-[10px] text-[#444] truncate">{user.email}</p></div>
-          <button onClick={handleLogout} className="p-2 text-[#333] hover:text-[#ff0000] transition-colors"><LogOut size={16} /></button>
+
+        <div className="p-4 bg-[#0a0a0a] border-b border-[#ff000011] flex items-center gap-3 group">
+          <div className="w-10 h-10 bg-[#111] border border-[#ff000033] rounded-full flex items-center justify-center text-[#ff0000] shadow-[0_0_10px_rgba(255,0,0,0.1)] overflow-hidden">
+            {user.avatar ? <img src={user.avatar} className="w-full h-full object-cover" alt="" /> : <User size={20} />}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold truncate uppercase tracking-tight text-white">{user.name}</p>
+            <p className="text-[10px] text-[#ff000088] truncate font-mono">{user.email}</p>
+          </div>
+          <div className="flex gap-1">
+            <button 
+              onClick={() => {
+                const id = prompt("Google Client ID:", googleClientId);
+                if (id !== null) {
+                  setGoogleClientId(id);
+                  localStorage.setItem('ns_google_client_id', id);
+                }
+              }} 
+              className="p-2 text-[#333] hover:text-[#ff0000] transition-colors"
+              title="Настройки Google"
+            >
+              <Settings size={16} />
+            </button>
+            <button onClick={handleLogout} className="p-2 text-[#333] hover:text-[#ff0000] transition-colors"><LogOut size={16} /></button>
+          </div>
         </div>
-        <div className="flex-1 overflow-y-auto custom-scrollbar">
-          {chats.length === 0 ? (<div className="p-10 text-center"><UserPlus size={40} className="mx-auto mb-4 text-[#111]" /><p className="text-xs text-[#333] uppercase font-bold tracking-widest">Список пуст</p></div>) : (
+
+        <div className="flex-1 overflow-y-auto custom-scrollbar bg-black/20">
+          {chats.length === 0 ? (
+            <div className="p-10 text-center opacity-20">
+              <UserPlus size={40} className="mx-auto mb-4 text-[#ff0000]" />
+              <p className="text-xs text-white uppercase font-bold tracking-widest">Список пуст</p>
+            </div>
+          ) : (
             chats.map(chat => (
-              <div key={chat.id} onClick={() => setActiveChat(chat)} className={cn("p-4 flex items-center gap-4 cursor-pointer transition-all border-b border-[#0a0a0a] group", activeChat?.id === chat.id ? "bg-[#111] border-l-4 border-l-[#ff0000]" : "hover:bg-[#080808] border-l-4 border-l-transparent")}>
-                <div className="w-12 h-12 bg-[#111] rounded-xl flex items-center justify-center text-[#444] group-hover:text-[#ff0000] transition-colors"><User size={24} /></div>
+              <div 
+                key={chat.id} 
+                onClick={() => setActiveChat(chat)} 
+                className={cn(
+                  "p-4 flex items-center gap-4 cursor-pointer transition-all border-b border-[#ffffff05] group", 
+                  activeChat?.id === chat.id 
+                    ? "bg-[#ff000011] border-l-4 border-l-[#ff0000] shadow-[inset_10px_0_20px_rgba(255,0,0,0.05)]" 
+                    : "hover:bg-[#080808] border-l-4 border-l-transparent"
+                )}
+              >
+                <div className={cn(
+                  "w-12 h-12 rounded-xl flex items-center justify-center transition-all border",
+                  activeChat?.id === chat.id ? "bg-[#ff000022] border-[#ff000044] text-[#ff0000]" : "bg-[#111] border-[#222] text-[#444] group-hover:border-[#ff000044] group-hover:text-[#ff0000]"
+                )}>
+                  <User size={24} />
+                </div>
                 <div className="flex-1 min-w-0">
-                  <div className="flex justify-between items-center mb-1"><h3 className="text-sm font-black uppercase tracking-tight truncate">{chat.name}</h3><span className="text-[9px] text-[#333] font-mono">{chat.timestamp}</span></div>
-                  <div className="flex justify-between items-center"><p className="text-[11px] text-[#555] truncate">{chat.email}</p><button onClick={(e) => deleteContact(chat.id, e)} className="opacity-0 group-hover:opacity-100 p-1 text-[#333] hover:text-[#ff0000] transition-all"><Trash2 size={14} /></button></div>
+                  <div className="flex justify-between items-center mb-1">
+                    <h3 className={cn("text-sm font-black uppercase tracking-tight truncate", activeChat?.id === chat.id ? "text-white" : "text-[#888] group-hover:text-white")}>{chat.name}</h3>
+                    <span className="text-[9px] text-[#444] font-mono">{chat.timestamp}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <p className="text-[11px] text-[#444] truncate font-mono">{chat.email}</p>
+                    <button onClick={(e) => deleteContact(chat.id, e)} className="opacity-0 group-hover:opacity-100 p-1 text-[#333] hover:text-[#ff0000] transition-all">
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
                 </div>
               </div>
             ))
           )}
         </div>
-        <div className="p-4 bg-[#080808] border-t border-[#1a1a1a]"><button onClick={() => setIsAddContactOpen(true)} className="w-full bg-white hover:bg-[#ff0000] text-black hover:text-white py-3 rounded-xl font-black uppercase text-xs tracking-widest flex items-center justify-center gap-2 transition-all active:scale-95"><Plus size={18} /> Добавить контакт</button></div>
+
+        <div className="p-4 bg-[#080808] border-t border-[#ff000022]">
+          <button 
+            onClick={() => setIsAddContactOpen(true)} 
+            className="w-full bg-[#ff0000] hover:bg-[#cc0000] text-white py-3 rounded-xl font-black uppercase text-xs tracking-widest flex items-center justify-center gap-2 transition-all active:scale-95 shadow-[0_5px_15px_rgba(255,0,0,0.2)]"
+          >
+            <Plus size={18} /> Добавить контакт
+          </button>
+        </div>
       </div>
+
       <div className="flex-1 flex flex-col bg-black relative min-w-0">
-        {!isSidebarOpen && (<button onClick={() => setIsSidebarOpen(true)} className="absolute top-6 left-6 z-30 p-2 bg-[#111] border border-[#222] rounded-lg text-[#ff0000] hover:bg-[#1a0000] transition-all"><ChevronRight size={20} /></button>)}
+        {/* Desktop Sidebar Toggle - Smaller and nicer */}
+        {!isSidebarOpen && (
+          <button 
+            onClick={() => setIsSidebarOpen(true)} 
+            className="absolute top-6 left-6 z-30 p-2.5 bg-[#0a0a0a] border border-[#ff000044] rounded-xl text-[#ff0000] hover:bg-[#ff000011] transition-all shadow-[0_0_15px_rgba(255,0,0,0.1)]"
+          >
+            <ChevronRight size={20} />
+          </button>
+        )}
+
         {activeChat ? (
           <>
-            <div className="h-20 px-8 bg-[#050505] border-b border-[#1a1a1a] flex justify-between items-center">
-              <div className="flex items-center gap-4"><div className="w-10 h-10 bg-[#111] border border-[#222] rounded-xl flex items-center justify-center text-[#ff0000]"><User size={20} /></div><div><h2 className="text-sm font-black uppercase tracking-widest">{activeChat.name}</h2><div className="flex items-center gap-3"><span className="flex items-center gap-1 text-[9px] text-[#00ff00] font-bold"><div className="w-1 h-1 bg-[#00ff00] rounded-full animate-pulse" />ENCRYPTED</span><span className="text-[10px] text-[#333]">{activeChat.email}</span></div></div></div>
-              <div className="flex items-center gap-6">
-                <button onClick={handleImportEncrypted} title="Импорт" className="p-2 text-[#444] hover:text-[#ff0000] transition-colors"><Plus size={20} /></button>
-                <button onClick={checkInbox} disabled={isTransporting} className="p-2 text-[#444] hover:text-white transition-colors disabled:opacity-20"><RefreshCw size={20} className={isTransporting ? 'animate-spin' : ''} /></button>
-                <div className="hidden md:block pl-6 border-l border-[#1a1a1a] text-right"><p className="text-[8px] text-[#333] uppercase font-black mb-1">Session Node</p><p className="text-[10px] text-[#ff0000] font-mono tracking-tighter">{sessionKey?.substring(0, 16)}</p></div>
+            <div className="h-20 px-8 bg-[#080808] border-b border-[#ff000022] flex justify-between items-center">
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 bg-[#111] border border-[#ff000044] rounded-xl flex items-center justify-center text-[#ff0000] shadow-[0_0_10px_rgba(255,0,0,0.1)]">
+                  <User size={20} />
+                </div>
+                <div>
+                  <h2 className="text-sm font-black uppercase tracking-widest text-white">{activeChat.name}</h2>
+                  <div className="flex items-center gap-3">
+                    <span className="flex items-center gap-1 text-[9px] text-[#00ff00] font-bold">
+                      <div className="w-1 h-1 bg-[#00ff00] rounded-full animate-pulse shadow-[0_0_5px_#00ff00]" />
+                      SECURE_NODE
+                    </span>
+                    <span className="text-[10px] text-[#444] font-mono">{activeChat.email}</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-4 md:gap-6">
+                <button onClick={handleImportEncrypted} title="Импорт" className="p-2 text-[#444] hover:text-[#ff0000] transition-colors">
+                  <Plus size={20} />
+                </button>
+                <button onClick={checkInbox} disabled={isTransporting} className="p-2 text-[#444] hover:text-[#ff0000] transition-all disabled:opacity-20">
+                  <RefreshCw size={20} className={isTransporting ? 'animate-spin' : ''} />
+                </button>
+                <div className="hidden md:block pl-6 border-l border-[#ff000011] text-right">
+                  <p className="text-[8px] text-[#444] uppercase font-black mb-1 tracking-tighter">Session Key</p>
+                  <p className="text-[10px] text-[#ff0000] font-mono tracking-tighter opacity-80">{sessionKey?.substring(0, 16)}</p>
+                </div>
               </div>
             </div>
-            <div ref={scrollRef} className="flex-1 overflow-y-auto p-8 custom-scrollbar space-y-6">
+
+            <div ref={scrollRef} className="flex-1 overflow-y-auto p-8 custom-scrollbar space-y-6 bg-[radial-gradient(circle_at_center,_#ff000005_0%,_transparent_70%)]">
               {messages.map((msg) => (
                 <div key={msg.id} className={cn("flex flex-col", msg.isSystem ? "items-center" : msg.sender === 'me' ? "items-end" : "items-start")}>
-                  {msg.isSystem ? (<div className="px-4 py-1 bg-[#080808] border border-[#111] rounded text-[9px] text-[#333] uppercase font-bold tracking-[0.2em]">{msg.text}</div>) : (
-                    <div className="max-w-[80%] md:max-w-[60%] group">
-                      <div className={cn("px-5 py-3 rounded-2xl text-sm leading-relaxed shadow-lg", msg.sender === 'me' ? "bg-[#ff0000] text-white rounded-tr-none" : "bg-[#111] text-[#ccc] border border-[#1a1a1a] rounded-tl-none")}>{msg.text}</div>
-                      <div className={cn("flex items-center gap-2 mt-2 px-1 text-[9px] font-bold uppercase tracking-tighter", msg.sender === 'me' ? "justify-end text-[#444]" : "text-[#333]")}><span>{msg.timestamp}</span>{msg.sender === 'me' && (msg.status === 'sending' ? <Loader2 size={10} className="animate-spin" /> : <CheckCheck size={10} className="text-[#ff0000]" />)}</div>
+                  {msg.isSystem ? (
+                    <div className="px-4 py-1 bg-[#0a0a0a] border border-[#ff000022] rounded text-[9px] text-[#ff0000] uppercase font-bold tracking-[0.2em] shadow-[0_0_10px_rgba(255,0,0,0.05)]">
+                      {msg.text}
+                    </div>
+                  ) : (
+                    <div className="max-w-[85%] md:max-w-[70%] group">
+                      <div className={cn(
+                        "px-5 py-3 rounded-2xl text-sm leading-relaxed shadow-lg transition-all", 
+                        msg.sender === 'me' 
+                          ? "bg-[#ff0000] text-white rounded-tr-none shadow-[0_5px_15px_rgba(255,0,0,0.2)]" 
+                          : "bg-[#111] text-[#ccc] border border-[#ff000011] rounded-tl-none"
+                      )}>
+                        {msg.text}
+                      </div>
+                      <div className={cn(
+                        "flex items-center gap-2 mt-2 px-1 text-[9px] font-bold uppercase tracking-tighter", 
+                        msg.sender === 'me' ? "justify-end text-[#444]" : "text-[#333]"
+                      )}>
+                        <span>{msg.timestamp}</span>
+                        {msg.sender === 'me' && (
+                          msg.status === 'sending' ? <Loader2 size={10} className="animate-spin text-[#ff0000]" /> : <CheckCheck size={10} className="text-[#ff0000]" />
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
               ))}
+              {isTransporting && (
+                <div className="flex justify-center italic text-[#ff0000] text-[10px] font-black uppercase tracking-widest animate-pulse">
+                  {transportStatus}
+                </div>
+              )}
             </div>
-            <div className="p-6 bg-[#050505] border-t border-[#1a1a1a]"><form onSubmit={handleSendMessage} className="max-w-4xl mx-auto flex gap-4"><div className="flex-1 relative group"><input type="text" value={newMessage} onChange={(e) => setNewMessage(e.target.value)} placeholder="Введите сообщение..." className="w-full bg-[#0a0a0a] border border-[#1a1a1a] rounded-2xl py-4 pl-6 pr-14 text-sm text-white outline-none focus:border-[#333] transition-all" /><div className="absolute right-5 top-1/2 -translate-y-1/2 text-[#1a1a1a] group-focus-within:text-[#ff0000] transition-colors"><Lock size={18} /></div></div><button type="submit" disabled={!newMessage.trim() || isTransporting} className={cn("w-14 h-14 rounded-2xl flex items-center justify-center transition-all shadow-lg", newMessage.trim() ? "bg-[#ff0000] text-white" : "bg-[#0a0a0a] text-[#1a1a1a] border border-[#1a1a1a]")}><Send size={22} strokeWidth={2.5} /></button></form></div>
+
+            <div className="p-6 bg-[#080808] border-t border-[#ff000022]">
+              <form onSubmit={handleSendMessage} className="max-w-4xl mx-auto flex gap-4">
+                <div className="flex-1 relative group">
+                  <input 
+                    type="text" 
+                    value={newMessage} 
+                    onChange={(e) => setNewMessage(e.target.value)} 
+                    placeholder="Введите сообщение..." 
+                    className="w-full bg-[#0a0a0a] border border-[#ff000022] rounded-2xl py-4 pl-6 pr-14 text-sm text-white outline-none focus:border-[#ff000088] transition-all placeholder-[#333]" 
+                  />
+                  <div className="absolute right-5 top-1/2 -translate-y-1/2 text-[#222] group-focus-within:text-[#ff0000] transition-colors">
+                    <Lock size={18} />
+                  </div>
+                </div>
+                <button 
+                  type="submit" 
+                  disabled={!newMessage.trim() || isTransporting} 
+                  className={cn(
+                    "w-14 h-14 rounded-2xl flex items-center justify-center transition-all shadow-lg active:scale-95", 
+                    newMessage.trim() ? "bg-[#ff0000] text-white shadow-[0_0_20px_rgba(255,0,0,0.3)]" : "bg-[#111] text-[#333] border border-[#222]"
+                  )}
+                >
+                  <Send size={22} strokeWidth={2.5} />
+                </button>
+              </form>
+            </div>
           </>
-        ) : (<div className="flex-1 flex flex-col items-center justify-center p-12 text-center"><div className="relative mb-8"><div className="absolute inset-0 bg-[#ff0000] blur-[100px] opacity-10" /><Shield size={120} className="text-[#080808] relative z-10" strokeWidth={0.5} /></div><h2 className="text-2xl font-black uppercase tracking-[0.3em] text-[#111] mb-2">NS Messenger</h2><p className="text-[#222] text-xs font-bold uppercase tracking-widest">Выберите узел</p></div>)}
+        ) : (
+          <div className="flex-1 flex flex-col items-center justify-center p-12 text-center relative overflow-hidden">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_#ff000010_0%,_transparent_70%)]" />
+            <div className="relative mb-8">
+              <div className="absolute inset-0 bg-[#ff0000] blur-[100px] opacity-20 animate-pulse" />
+              <Shield size={120} className="text-[#111] relative z-10 opacity-50" strokeWidth={0.5} />
+            </div>
+            <h2 className="text-2xl font-black uppercase tracking-[0.3em] text-[#222] mb-2 relative z-10">NS Messenger</h2>
+            <p className="text-[#ff000044] text-[10px] font-black uppercase tracking-[0.5em] relative z-10">Select Secure Node</p>
+          </div>
+        )}
       </div>
       <AnimatePresence>
         {isAddContactOpen && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsAddContactOpen(false)} className="absolute inset-0 bg-black/90 backdrop-blur-sm" />
-            <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className="relative w-full max-w-sm bg-[#0a0a0a] border border-[#1a1a1a] rounded-3xl p-8 shadow-2xl">
-              <h2 className="text-xl font-black uppercase tracking-tighter mb-6 flex items-center gap-3"><UserPlus className="text-[#ff0000]" /> Новый контакт</h2>
+            <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className="relative w-full max-w-sm bg-[#0a0a0a] border border-[#ff000044] rounded-3xl p-8 shadow-[0_20px_50px_rgba(0,0,0,0.5),0_0_30px_rgba(255,0,0,0.1)]">
+              <h2 className="text-xl font-black uppercase tracking-tighter mb-6 flex items-center gap-3 text-white"><UserPlus className="text-[#ff0000]" /> Новый контакт</h2>
               <form onSubmit={addContact} className="space-y-4">
-                <div><label className="text-[10px] font-bold text-[#444] mb-2 block uppercase tracking-widest">Имя</label><input type="text" value={newContactName} onChange={(e) => setNewContactName(e.target.value)} required className="w-full bg-[#111] border border-[#222] rounded-xl py-3 px-4 text-white outline-none focus:border-[#ff0000]" /></div>
-                <div><label className="text-[10px] font-bold text-[#444] mb-2 block uppercase tracking-widest">Email</label><input type="email" value={newContactEmail} onChange={(e) => setNewContactEmail(e.target.value)} required className="w-full bg-[#111] border border-[#222] rounded-xl py-3 px-4 text-white outline-none focus:border-[#ff0000]" /></div>
-                <div className="flex gap-3 pt-4"><button type="button" onClick={() => setIsAddContactOpen(false)} className="flex-1 py-3 rounded-xl font-bold uppercase text-[10px] tracking-widest border border-[#222]">Отмена</button><button type="submit" className="flex-1 bg-[#ff0000] py-3 rounded-xl font-bold uppercase text-[10px] tracking-widest">Добавить</button></div>
+                <div><label className="text-[10px] font-bold text-[#444] mb-2 block uppercase tracking-widest">Имя</label><input type="text" value={newContactName} onChange={(e) => setNewContactName(e.target.value)} required className="w-full bg-[#111] border border-[#ff000022] rounded-xl py-3 px-4 text-white outline-none focus:border-[#ff0000] transition-all" /></div>
+                <div><label className="text-[10px] font-bold text-[#444] mb-2 block uppercase tracking-widest">Email</label><input type="email" value={newContactEmail} onChange={(e) => setNewContactEmail(e.target.value)} required className="w-full bg-[#111] border border-[#ff000022] rounded-xl py-3 px-4 text-white outline-none focus:border-[#ff0000] transition-all" /></div>
+                <div className="flex gap-3 pt-4"><button type="button" onClick={() => setIsAddContactOpen(false)} className="flex-1 py-3 rounded-xl font-bold uppercase text-[10px] tracking-widest border border-[#222] text-[#444] hover:text-white transition-colors">Отмена</button><button type="submit" className="flex-1 bg-[#ff0000] py-3 rounded-xl font-bold uppercase text-[10px] tracking-widest text-white shadow-[0_5px_15px_rgba(255,0,0,0.2)]">Добавить</button></div>
               </form>
             </motion.div>
           </div>
