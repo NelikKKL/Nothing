@@ -36,13 +36,14 @@ jobs:
         run: npm install @capacitor/cli
 
       - name: Sync Capacitor
-        run: npx cap sync android
+        run: |
+          npx cap sync android
 
       - name: Build with Gradle
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug
+          ./gradlew assembleDebug --stacktrace
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
