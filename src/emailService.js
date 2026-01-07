@@ -91,6 +91,50 @@ class EmailService {
   }
 
   // Умное получение входящих (Delta Chat Style)
+  // Автоматический разбор сообщения из буфера или ручного ввода
+  processManualMessage(fullText) {
+    try {
+      const msgMatch = fullText.match(/---NS_SECURE_MSG_BEGIN---\n([\s\S]*?)\n---NS_SECURE_MSG_END---/);
+      const senderMatch = fullText.match(/From: (.*)/);
+      
+      if (!msgMatch) return false;
+
+      const encryptedContent = msgMatch[1].trim();
+      let senderEmail = senderMatch ? senderMatch[1].trim() : 'Unknown';
+      
+      // Если отправитель не найден в тексте, попробуем найти его по контексту (если мы в чате)
+      // Но здесь у нас нет доступа к контексту чата напрямую, поэтому оставим Unknown
+      // или попробуем вытащить из первой строки если там есть email
+      if (senderEmail === 'Unknown') {
+        const emailInText = fullText.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+        if (emailInText) senderEmail = emailInText[0];
+      }
+      
+      // Создаем объект сообщения
+      const newMsg = {
+        id: 'manual_' + Date.now(),
+        from: senderEmail,
+        subject: 'Secure Message',
+        body: encryptedContent,
+        date: new Date().toISOString(),
+        isManual: true
+      };
+
+      // Сохраняем в локальную базу транспорта
+      let localDb = JSON.parse(localStorage.getItem('email_transport_db') || '[]');
+      
+      // Проверка на дубликаты по телу сообщения
+      if (localDb.some(m => m.body === encryptedContent)) return false;
+
+      localDb.push(newMsg);
+      localStorage.setItem('email_transport_db', JSON.stringify(localDb));
+      return true;
+    } catch (e) {
+      console.error("Error processing manual message:", e);
+      return false;
+    }
+  }
+
   async fetchInbox(myEmail) {
     let localDb = JSON.parse(localStorage.getItem('email_transport_db'));
     let newMsgs = [];

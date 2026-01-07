@@ -24,6 +24,7 @@ function App() {
   const [transportStatus, setTransportStatus] = useState('');
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [importStatus, setImportStatus] = useState(null); // 'success' | 'error' | null
   const [chats, setChats] = useState([]);
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState(null);
@@ -175,6 +176,45 @@ function App() {
     localStorage.setItem('ns_user', JSON.stringify(newUser));
     setUser(newUser);
   };
+
+  // --- CLIPBOARD AUTO-IMPORT ---
+  useEffect(() => {
+    const checkClipboard = async () => {
+      // Работаем только если нет токена (ручной режим) или как доп. канал
+      try {
+        const text = await navigator.clipboard.readText();
+        if (text && text.includes('---NS_SECURE_MSG_BEGIN---')) {
+          // Проверяем, не обрабатывали ли мы это сообщение только что
+          const lastImported = localStorage.getItem('last_auto_imported_msg');
+          if (lastImported === text) return;
+
+          // Пытаемся импортировать
+          const imported = emailService.processManualMessage(text);
+          if (imported) {
+            localStorage.setItem('last_auto_imported_msg', text);
+            // Очищаем буфер после импорта для безопасности (опционально)
+            // await navigator.clipboard.writeText(''); 
+            
+            // Обновляем список сообщений
+            if (selectedContact) {
+              const history = emailService.getChatHistory(user.email, selectedContact.email);
+              setMessages(history);
+            }
+            
+            setImportStatus('success');
+            setTimeout(() => setImportStatus(null), 3000);
+          }
+        }
+      } catch (err) {
+        // Игнорируем ошибки доступа к буферу (например, если пользователь не дал разрешение)
+      }
+    };
+
+    // Проверяем при монтировании и при возврате в приложение
+    checkClipboard();
+    window.addEventListener('focus', checkClipboard);
+    return () => window.removeEventListener('focus', checkClipboard);
+  }, [selectedContact, user]);
 
   useEffect(() => {
     if (user) {
@@ -408,6 +448,19 @@ function App() {
 
   return (
     <div className="flex h-screen bg-black text-white font-sans overflow-hidden selection:bg-[#ff0000] selection:text-white">
+      <AnimatePresence>
+        {importStatus === 'success' && (
+          <motion.div 
+            initial={{ y: -100, opacity: 0 }}
+            animate={{ y: 20, opacity: 1 }}
+            exit={{ y: -100, opacity: 0 }}
+            className="fixed top-0 left-1/2 -translate-x-1/2 z-[200] bg-[#ff0000] text-white px-6 py-3 rounded-full font-black uppercase text-[10px] tracking-[0.2em] shadow-[0_0_30px_rgba(255,0,0,0.5)] flex items-center gap-3"
+          >
+            <CheckCheck size={16} /> Сообщение импортировано
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Mobile Sidebar Toggle - Ultra small and stylish */}
       <AnimatePresence>
         {!isSidebarOpen && (
