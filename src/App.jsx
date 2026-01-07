@@ -19,6 +19,7 @@ function App() {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [sessionKey, setSessionKey] = useState(null);
+  const [isKeyEstablished, setIsKeyEstablished] = useState(false);
   const [isTransporting, setIsTransporting] = useState(false);
   const [transportStatus, setTransportStatus] = useState('');
 
@@ -80,20 +81,72 @@ function App() {
 
   useEffect(() => {
     if (activeChat) {
-      const newKey = generateSessionKey();
-      setSessionKey(newKey);
+      const savedKey = localStorage.getItem(`ns_key_${activeChat.email}`);
+      if (savedKey) {
+        setSessionKey(savedKey);
+        setIsKeyEstablished(true);
+      } else {
+        setSessionKey(null);
+        setIsKeyEstablished(false);
+      }
+      
       const chatHistory = localStorage.getItem(`ns_history_${activeChat.email}`);
       if (chatHistory) {
         setMessages(JSON.parse(chatHistory));
       } else {
         setMessages([
-          { id: 'sys_1', text: `--- ЗАЩИЩЕННЫЙ КАНАЛ УСТАНОВЛЕН ---`, isSystem: true },
-          { id: 'sys_2', text: 'Все сообщения шифруются AES-256. Ключ сессии обновлен.', sender: 'system', timestamp: 'now' }
+          { id: 'sys_1', text: `--- ОЖИДАНИЕ КЛЮЧА ШИФРОВАНИЯ ---`, isSystem: true },
+          { id: 'sys_2', text: 'Для начала общения необходимо обменяться ключами безопасности.', sender: 'system', timestamp: 'now' }
         ]);
       }
       checkInbox();
     }
   }, [activeChat]);
+
+  const handleSendKey = async () => {
+    if (!activeChat || !user) return;
+    const newKey = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    const keyMsg = `NS_KEY_SHARE:${newKey}`;
+    
+    setIsTransporting(true);
+    setTransportStatus('Отправка ключа...');
+    try {
+      await emailService.sendAsEmail({
+        to: activeChat.email,
+        from: user.email,
+        subject: `NS_KEY_EXCHANGE`,
+        encryptedBody: keyMsg,
+        metadata: { type: 'key_exchange' }
+      });
+      
+      setSessionKey(newKey);
+      setIsKeyEstablished(true);
+      localStorage.setItem(`ns_key_${activeChat.email}`, newKey);
+      
+      setMessages(prev => [...prev, {
+        id: Date.now(),
+        text: "ВЫ ОТПРАВИЛИ КЛЮЧ БЕЗОПАСНОСТИ. Ожидайте подтверждения.",
+        isSystem: true,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      }]);
+    } finally {
+      setIsTransporting(false);
+      setTransportStatus('');
+    }
+  };
+
+  const handleAcceptKey = (key) => {
+    if (!activeChat) return;
+    setSessionKey(key);
+    setIsKeyEstablished(true);
+    localStorage.setItem(`ns_key_${activeChat.email}`, key);
+    setMessages(prev => [...prev, {
+      id: Date.now(),
+      text: "КЛЮЧ ПРИНЯТ. КАНАЛ ЗАШИФРОВАН.",
+      isSystem: true,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    }]);
+  };
 
   useEffect(() => {
     if (activeChat && messages.length > 0) {
@@ -165,7 +218,7 @@ function App() {
   };
 
   const checkInbox = async () => {
-    if (!activeChat || !user || !sessionKey) return;
+    if (!activeChat || !user) return;
     setIsTransporting(true);
     setTransportStatus('Проверка шлюзов...');
     try {
@@ -173,18 +226,34 @@ function App() {
       const chatEmails = inbox.filter(mail => mail.from === activeChat.email);
       let newMsgsFound = false;
       const updatedMessages = [...messages];
+      
       chatEmails.forEach(mail => {
         if (!messages.find(m => m.id === mail.id || m.encrypted === mail.body)) {
-          const decrypted = decryptMessage(mail.body, sessionKey);
-          if (decrypted) {
+          // Если это передача ключа
+          if (mail.isKeyShare || mail.body.startsWith("NS_KEY_SHARE:")) {
+            const key = mail.body.replace("NS_KEY_SHARE:", "");
             newMsgsFound = true;
             updatedMessages.push({
               id: mail.id,
-              text: decrypted,
-              encrypted: mail.body,
+              text: "ПОЛУЧЕН НОВЫЙ КЛЮЧ БЕЗОПАСНОСТИ",
+              keyToAccept: key,
+              isKeyShare: true,
               sender: 'partner',
               timestamp: new Date(mail.sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
             });
+          } else if (sessionKey) {
+            // Обычное сообщение, расшифровываем только если есть ключ
+            const decrypted = decryptMessage(mail.body, sessionKey);
+            if (decrypted) {
+              newMsgsFound = true;
+              updatedMessages.push({
+                id: mail.id,
+                text: decrypted,
+                encrypted: mail.body,
+                sender: 'partner',
+                timestamp: new Date(mail.sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              });
+            }
           }
         }
       });
@@ -455,6 +524,14 @@ function App() {
                 </div>
               </div>
               <div className="flex items-center gap-2 md:gap-4">
+                {!isKeyEstablished && (
+                  <button 
+                    onClick={handleSendKey} 
+                    className="hidden md:flex items-center gap-2 px-4 py-2 bg-[#ff0000] text-white rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-[#cc0000] transition-all shadow-[0_0_15px_rgba(255,0,0,0.3)] animate-pulse"
+                  >
+                    <Lock size={14} /> ОТПРАВИТЬ КЛЮЧ
+                  </button>
+                )}
                 <button onClick={() => checkInbox()} className="p-2.5 text-[#444] hover:text-[#ff0000] transition-all bg-[#111] border border-[#222] rounded-xl hover:border-[#ff000044]" title="Update">
                   <RefreshCw size={20} strokeWidth={2.5} className={cn(isSyncing && "animate-spin text-[#ff0000]")} />
                 </button>
@@ -464,8 +541,18 @@ function App() {
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 md:p-10 space-y-6 custom-scrollbar bg-black bg-[radial-gradient(circle_at_center,_#ff000008_0%,_transparent_70%)]" ref={scrollRef}>
-              <AnimatePresence initial={false}>
+                <div className="flex-1 overflow-y-auto p-4 md:p-10 space-y-6 custom-scrollbar bg-black bg-[radial-gradient(circle_at_center,_#ff000008_0%,_transparent_70%)]" ref={scrollRef}>
+                  {!isKeyEstablished && (
+                    <div className="flex justify-center mb-6 md:hidden">
+                      <button 
+                        onClick={handleSendKey} 
+                        className="w-full max-w-xs flex items-center justify-center gap-3 py-4 bg-[#ff0000] text-white rounded-2xl font-black uppercase text-[12px] tracking-[0.2em] shadow-[0_0_30px_rgba(255,0,0,0.4)] animate-pulse"
+                      >
+                        <Lock size={18} strokeWidth={3} /> ОТПРАВИТЬ КЛЮЧ
+                      </button>
+                    </div>
+                  )}
+                  <AnimatePresence initial={false}>
                 {messages.map((msg, idx) => (
                   <motion.div 
                     key={msg.id || idx} 
@@ -488,6 +575,16 @@ function App() {
                           : "bg-[#0a0a0a] text-[#ccc] border-[#ff000044] rounded-bl-none shadow-[0_8px_25px_rgba(0,0,0,0.8)]"
                       )}>
                         <p className="text-[15px] leading-relaxed break-words font-semibold tracking-tight">{msg.text}</p>
+                        
+                        {msg.isKeyShare && (
+                          <button 
+                            onClick={() => handleAcceptKey(msg.keyToAccept)}
+                            className="mt-3 w-full bg-[#ff0000] text-white py-2 rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-[#cc0000] transition-all shadow-[0_5px_15px_rgba(255,0,0,0.4)]"
+                          >
+                            ПРИНЯТЬ КЛЮЧ
+                          </button>
+                        )}
+
                         <div className={cn(
                           "flex items-center gap-2 mt-2 justify-end opacity-60",
                           msg.sender === 'me' ? "text-white" : "text-[#ff0000]"

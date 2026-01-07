@@ -126,8 +126,8 @@ class EmailService {
               body = this.decodeBase64(detail.payload.body.data);
             }
 
-            const match = body.match(/--- NS MESSENGER ENCRYPTED MESSAGE ---\n\n([\s\S]+?)\n\n---/);
-            const encryptedBody = match ? match[1].trim() : (body.length > 50 ? body.trim() : null);
+            const match = body.match(/--- NS MESSENGER ENCRYPTED MESSAGE ---\s+([\s\S]+?)\s+---/);
+            const encryptedBody = match ? match[1].trim() : (body.includes("NS_KEY_SHARE:") ? body.trim() : null);
 
             if (encryptedBody) {
               const newMsg = {
@@ -136,6 +136,7 @@ class EmailService {
                 to: myEmail,
                 subject: subject,
                 body: encryptedBody,
+                isKeyShare: encryptedBody.startsWith("NS_KEY_SHARE:"),
                 sentAt: new Date(parseInt(detail.internalDate)).toISOString()
               };
               newMsgs.push(newMsg);
