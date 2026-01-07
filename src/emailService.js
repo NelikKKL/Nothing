@@ -2,6 +2,7 @@
 class EmailService {
   constructor() {
     this.accessToken = localStorage.getItem('ns_gmail_token') || null;
+    this.lastSync = localStorage.getItem('ns_last_sync') || 0;
     if (!localStorage.getItem('email_transport_db')) {
       localStorage.setItem('email_transport_db', JSON.stringify([]));
     }
@@ -12,12 +13,13 @@ class EmailService {
     localStorage.setItem('ns_gmail_token', token);
   }
 
-  // Отправка сообщения
+  // Универсальный метод отправки (Delta Chat Style)
   async sendAsEmail({ to, from, subject, encryptedBody, metadata }) {
-    console.log(`%c[TRANSPORT] Sending to ${to}...`, 'color: #ff0000; font-weight: bold;');
+    // Генерируем Message-ID для трединга (как в Delta Chat)
+    const messageId = `<${Date.now()}.${Math.random().toString(36).substring(7)}@ns.messenger>`;
     
     const emailEnvelope = {
-      id: `msg_${Date.now()}`,
+      id: messageId,
       from,
       to,
       subject: subject || "NS_SECURE_MSG",
@@ -26,26 +28,31 @@ class EmailService {
       sentAt: new Date().toISOString(),
     };
 
-    // 1. Сохраняем локально для истории
+    // Сохраняем локально
     const db = JSON.parse(localStorage.getItem('email_transport_db'));
-    db.push(emailEnvelope);
-    localStorage.setItem('email_transport_db', JSON.stringify(db));
+    if (!db.find(m => m.id === messageId)) {
+      db.push(emailEnvelope);
+      localStorage.setItem('email_transport_db', JSON.stringify(db));
+    }
 
-    // 2. Реальная отправка через Gmail API (если есть токен) или mailto
     if (this.accessToken) {
       try {
         const utf8Subject = `=?utf-8?B?${btoa(unescape(encodeURIComponent(emailEnvelope.subject)))}?=`;
         const emailContent = [
+          `Message-ID: ${messageId}`,
           `To: ${to}`,
           `Subject: ${utf8Subject}`,
           'Content-Type: text/plain; charset="utf-8"',
+          'X-Mailer: NS-Messenger-v1',
+          'Chat-Version: 1.0',
           '',
           "--- NS MESSENGER ENCRYPTED MESSAGE ---",
           "",
           encryptedBody,
           "",
           "--------------------------------------",
-          `Session ID: ${metadata.sessionId}`
+          `Session ID: ${metadata.sessionId}`,
+          "Reply to this email using NS Messenger."
         ].join('\r\n');
 
         const base64Safe = btoa(unescape(encodeURIComponent(emailContent)))
@@ -62,16 +69,14 @@ class EmailService {
           body: JSON.stringify({ raw: base64Safe })
         });
         
-        console.log("Sent via Gmail API");
+        return { success: true, id: messageId };
       } catch (e) {
-        console.error("Gmail API Send failed, falling back to mailto:", e);
-        this.openMailto(to, emailEnvelope.subject, encryptedBody, metadata);
+        console.error("Gmail API failed, using fallback");
+        return this.openMailto(to, emailEnvelope.subject, encryptedBody, metadata);
       }
     } else {
-      this.openMailto(to, emailEnvelope.subject, encryptedBody, metadata);
+      return this.openMailto(to, emailEnvelope.subject, encryptedBody, metadata);
     }
-
-    return emailEnvelope;
   }
 
   openMailto(to, subject, body, metadata) {
@@ -79,64 +84,81 @@ class EmailService {
       "--- NS MESSENGER ENCRYPTED MESSAGE ---\n\n" + 
       body + 
       "\n\n--------------------------------------\n" +
-      "Скопируйте текст выше и вставьте в NS Messenger для расшифровки.\n" +
       "Session ID: " + metadata.sessionId
     )}`;
     window.location.href = mailtoUrl;
+    return { success: true, fallback: true };
   }
 
-  // Получение новых сообщений (реальный Gmail + локальный кэш)
+  // Умное получение входящих (Delta Chat Style)
   async fetchInbox(myEmail) {
-    let messages = JSON.parse(localStorage.getItem('email_transport_db')).filter(mail => mail.to === myEmail);
+    let localDb = JSON.parse(localStorage.getItem('email_transport_db'));
+    let newMsgs = [];
 
     if (this.accessToken) {
       try {
-        // Ищем письма с темой NS_MSG или содержащие наш маркер
-        const response = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages?q=NS_SECURE_MSG OR "NS MESSENGER ENCRYPTED MESSAGE"', {
+        // Ищем только новые сообщения с момента последней синхронизации
+        const query = `(NS_SECURE_MSG OR "NS MESSENGER ENCRYPTED MESSAGE")`;
+        const response = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${encodeURIComponent(query)}&maxResults=20`, {
           headers: { 'Authorization': `Bearer ${this.accessToken}` }
         });
         const data = await response.json();
 
         if (data.messages) {
-          for (const msgInfo of data.messages.slice(0, 10)) { // Берем последние 10
+          for (const msgInfo of data.messages) {
+            // Проверяем, нет ли у нас уже этого сообщения
+            if (localDb.find(m => m.id === msgInfo.id)) continue;
+
             const detailRes = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${msgInfo.id}`, {
               headers: { 'Authorization': `Bearer ${this.accessToken}` }
             });
             const detail = await detailRes.json();
             
-            const fromHeader = detail.payload.headers.find(h => h.name === 'From')?.value || '';
-            const subject = detail.payload.headers.find(h => h.name === 'Subject')?.value || '';
+            const fromHeader = detail.payload.headers.find(h => h.name.toLowerCase() === 'from')?.value || '';
+            const subject = detail.payload.headers.find(h => h.name.toLowerCase() === 'subject')?.value || '';
             const fromEmail = fromHeader.match(/<(.+)>/)?.[1] || fromHeader;
             
-            // Извлекаем тело письма (может быть в разных частях)
             let body = "";
             if (detail.payload.parts) {
-              body = atob(detail.payload.parts[0].body.data.replace(/-/g, '+').replace(/_/g, '/'));
-            } else {
-              body = atob(detail.payload.body.data.replace(/-/g, '+').replace(/_/g, '/'));
+              const part = detail.payload.parts.find(p => p.mimeType === 'text/plain') || detail.payload.parts[0];
+              body = this.decodeBase64(part.body.data);
+            } else if (detail.payload.body.data) {
+              body = this.decodeBase64(detail.payload.body.data);
             }
 
             const match = body.match(/--- NS MESSENGER ENCRYPTED MESSAGE ---\n\n([\s\S]+?)\n\n---/);
-            const encryptedBody = match ? match[1].trim() : null;
+            const encryptedBody = match ? match[1].trim() : (body.length > 50 ? body.trim() : null);
 
             if (encryptedBody) {
-              messages.push({
-                id: detail.id,
+              const newMsg = {
+                id: msgInfo.id,
                 from: fromEmail,
                 to: myEmail,
                 subject: subject,
                 body: encryptedBody,
                 sentAt: new Date(parseInt(detail.internalDate)).toISOString()
-              });
+              };
+              newMsgs.push(newMsg);
+              localDb.push(newMsg);
             }
           }
+          localStorage.setItem('email_transport_db', JSON.stringify(localDb));
+          localStorage.setItem('ns_last_sync', Date.now().toString());
         }
       } catch (e) {
-        console.error("Gmail Fetch Error:", e);
+        console.error("Sync Error:", e);
       }
     }
     
-    return messages;
+    return localDb.filter(mail => mail.to === myEmail);
+  }
+
+  decodeBase64(data) {
+    try {
+      return decodeURIComponent(escape(atob(data.replace(/-/g, '+').replace(/_/g, '/'))));
+    } catch (e) {
+      return atob(data.replace(/-/g, '+').replace(/_/g, '/'));
+    }
   }
 }
 

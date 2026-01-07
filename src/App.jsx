@@ -24,6 +24,8 @@ function App() {
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [chats, setChats] = useState([]);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [lastSyncTime, setLastSyncTime] = useState(null);
   const [isAddContactOpen, setIsAddContactOpen] = useState(false);
   const [newContactName, setNewContactName] = useState('');
   const [newContactEmail, setNewContactEmail] = useState('');
@@ -110,6 +112,53 @@ function App() {
     localStorage.setItem('ns_user', JSON.stringify(newUser));
     setUser(newUser);
   };
+
+  useEffect(() => {
+    if (user) {
+      const sync = async () => {
+        setIsSyncing(true);
+        try {
+          const allEmails = await emailService.fetchInbox(user.email);
+          // Группируем сообщения по чатам
+          const updatedChats = [...chats];
+          let hasChanges = false;
+
+          allEmails.forEach(mail => {
+            const chatIndex = updatedChats.findIndex(c => c.email === mail.from);
+            if (chatIndex !== -1) {
+              const chat = updatedChats[chatIndex];
+              if (!chat.messages.find(m => m.id === mail.id)) {
+                chat.messages.push({
+                  id: mail.id,
+                  text: mail.body,
+                  sender: 'them',
+                  timestamp: mail.sentAt,
+                  isEncrypted: true
+                });
+                chat.lastMessage = "Зашифрованное сообщение";
+                chat.timestamp = mail.sentAt;
+                hasChanges = true;
+              }
+            }
+          });
+
+          if (hasChanges) {
+            setChats(updatedChats);
+            localStorage.setItem('ns_chats', JSON.stringify(updatedChats));
+          }
+          setLastSyncTime(new Date());
+        } catch (e) {
+          console.error("Sync failed:", e);
+        } finally {
+          setIsSyncing(false);
+        }
+      };
+
+      sync();
+      const interval = setInterval(sync, 30000); // Синхронизация каждые 30 секунд
+      return () => clearInterval(interval);
+    }
+  }, [user]);
 
   const handleLogout = () => {
     if (window.confirm('Вы уверены, что хотите выйти?')) setUser(null);
@@ -390,10 +439,12 @@ function App() {
                 <div>
                   <h2 className="text-sm font-black uppercase tracking-widest text-white">{activeChat.name}</h2>
                   <div className="flex items-center gap-3">
-                    <span className="flex items-center gap-1 text-[9px] text-[#00ff00] font-bold">
-                      <div className="w-1 h-1 bg-[#00ff00] rounded-full animate-pulse shadow-[0_0_5px_#00ff00]" />
-                      SECURE_NODE
-                    </span>
+                    <div className="flex items-center gap-1">
+                      <div className={cn("w-1 h-1 rounded-full animate-pulse", isSyncing ? "bg-blue-500 shadow-[0_0_5px_#3b82f6]" : "bg-[#00ff00] shadow-[0_0_5px_#00ff00]")} />
+                      <span className={cn("text-[9px] font-bold uppercase tracking-widest", isSyncing ? "text-blue-500" : "text-[#00ff00]")}>
+                        {isSyncing ? 'Синхронизация...' : 'SECURE_NODE'}
+                      </span>
+                    </div>
                     <span className="text-[10px] text-[#444] font-mono">{activeChat.email}</span>
                   </div>
                 </div>
