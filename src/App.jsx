@@ -265,40 +265,62 @@ function App() {
   if (!user) {
     return (
       <div className="flex h-screen bg-black items-center justify-center p-4">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-md p-8 bg-[#0a0a0a] border border-[#1a1a1a] rounded-3xl shadow-2xl text-center">
+        <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="w-full max-w-md p-8 bg-[#050505] border border-[#ff000033] rounded-[2rem] shadow-[0_0_50px_rgba(255,0,0,0.15)] text-center relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#ff0000] to-transparent" />
+          
           <div className="mb-8">
-            <div className="inline-flex p-5 bg-[#1a0000] border border-[#330000] rounded-full text-[#ff0000] mb-6"><Shield size={48} strokeWidth={1.5} /></div>
-            <h1 className="text-3xl font-black tracking-tighter text-white mb-2 uppercase">NS Messenger</h1>
-            <p className="text-[#666] text-sm">Вход в защищенный узел связи</p>
+            <div className="inline-flex p-6 bg-[#1a0000] border border-[#ff000044] rounded-3xl text-[#ff0000] mb-6 shadow-[0_0_30px_rgba(255,0,0,0.2)]">
+              <Shield size={64} strokeWidth={1.2} />
+            </div>
+            <h1 className="text-4xl font-black tracking-tighter text-white mb-2 uppercase italic">NS <span className="text-[#ff0000] drop-shadow-[0_0_10px_#ff0000]">Messenger</span></h1>
+            <p className="text-[#444] text-[10px] font-bold uppercase tracking-[0.4em]">Secure Communication Node</p>
           </div>
-          <form onSubmit={handleRegister} className="flex flex-col gap-5">
+
+          <form onSubmit={handleRegister} className="flex flex-col gap-4">
             <div className="text-left">
-              <label className="text-[10px] font-bold text-[#444] mb-2 block uppercase tracking-widest">Идентификатор</label>
-              <div className="relative">
-                <input type="text" value={regName} onChange={(e) => setRegName(e.target.value)} placeholder="Ваш позывной" required className="w-full bg-[#111] border border-[#222] rounded-xl py-4 pl-12 pr-4 text-white placeholder-[#333] outline-none focus:border-[#ff0000] transition-all" />
-                <User size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#ff0000]" />
+              <div className="relative group">
+                <input 
+                  type="text" 
+                  value={regName} 
+                  onChange={(e) => setRegName(e.target.value)} 
+                  placeholder="ПОЗЫВНОЙ" 
+                  required 
+                  className="w-full bg-[#0a0a0a] border border-[#222] group-focus-within:border-[#ff0000] rounded-2xl py-4 pl-14 pr-4 text-white placeholder-[#333] outline-none transition-all" 
+                />
+                <User size={22} className="absolute left-5 top-1/2 -translate-y-1/2 text-[#444] group-focus-within:text-[#ff0000] transition-colors" />
               </div>
             </div>
             <div className="text-left">
-              <label className="text-[10px] font-bold text-[#444] mb-2 block uppercase tracking-widest">Почтовый шлюз</label>
-              <div className="relative">
-                <input type="email" value={regEmail} onChange={(e) => setRegEmail(e.target.value)} placeholder="email@example.com" required className="w-full bg-[#111] border border-[#222] rounded-xl py-4 pl-12 pr-4 text-white placeholder-[#333] outline-none focus:border-[#ff0000] transition-all" />
-                <Mail size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#ff0000]" />
+              <div className="relative group">
+                <input 
+                  type="email" 
+                  value={regEmail} 
+                  onChange={(e) => setRegEmail(e.target.value)} 
+                  placeholder="EMAIL ШЛЮЗ" 
+                  required 
+                  className="w-full bg-[#0a0a0a] border border-[#222] group-focus-within:border-[#ff0000] rounded-2xl py-4 pl-14 pr-4 text-white placeholder-[#333] outline-none transition-all" 
+                />
+                <Mail size={22} className="absolute left-5 top-1/2 -translate-y-1/2 text-[#444] group-focus-within:text-[#ff0000] transition-colors" />
               </div>
             </div>
-            <button type="submit" className="mt-4 bg-[#ff0000] hover:bg-[#cc0000] text-white py-4 rounded-xl font-black uppercase tracking-widest flex items-center justify-center gap-3 transition-all active:scale-95 shadow-lg shadow-[#ff000022]">Инициализировать <ArrowRight size={20} /></button>
+            <button type="submit" className="mt-2 bg-[#ff0000] hover:bg-[#cc0000] text-white py-4 rounded-2xl font-black uppercase tracking-[0.2em] flex items-center justify-center gap-3 transition-all active:scale-95 shadow-[0_10px_25px_rgba(255,0,0,0.3)]">
+              ВХОД В СЕТЬ <ArrowRight size={20} />
+            </button>
           </form>
 
           <div className="relative my-8">
             <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-[#1a1a1a]"></div></div>
-            <div className="relative flex justify-center text-[10px] uppercase font-bold tracking-widest"><span className="bg-[#0a0a0a] px-4 text-[#444]">или через Google</span></div>
+            <div className="relative flex justify-center text-[9px] uppercase font-black tracking-[0.3em]"><span className="bg-[#050505] px-4 text-[#333]">Биометрия Google</span></div>
           </div>
 
           <button 
             onClick={handleGoogleLogin}
-            className="w-full bg-white hover:bg-[#f0f0f0] text-black py-4 rounded-xl font-black uppercase tracking-widest flex items-center justify-center gap-3 transition-all active:scale-95 shadow-lg"
+            className="w-full bg-[#111] border border-[#222] hover:border-[#ff000033] text-white py-4 rounded-2xl font-black uppercase tracking-[0.1em] flex items-center justify-center gap-3 transition-all active:scale-95 group"
           >
-            <img src="https://www.google.com/favicon.ico" className="w-5 h-5" alt="G" /> Войти через Google
+            <div className="p-1 bg-white rounded-md group-hover:shadow-[0_0_10px_rgba(255,255,255,0.5)] transition-all">
+              <img src="https://www.google.com/favicon.ico" className="w-4 h-4" alt="G" />
+            </div>
+            GOOGLE AUTH
           </button>
         </motion.div>
       </div>
@@ -307,255 +329,267 @@ function App() {
 
   return (
     <div className="flex h-screen bg-black text-white font-sans overflow-hidden selection:bg-[#ff0000] selection:text-white">
-      {/* Mobile Sidebar Toggle - Made smaller and more stylish */}
+      {/* Mobile Sidebar Toggle - Ultra small and stylish */}
       <AnimatePresence>
         {!isSidebarOpen && (
           <motion.button 
-            initial={{ opacity: 0, x: -20 }} 
-            animate={{ opacity: 1, x: 0 }} 
-            exit={{ opacity: 0, x: -20 }} 
+            initial={{ opacity: 0, scale: 0.5 }} 
+            animate={{ opacity: 1, scale: 1 }} 
+            exit={{ opacity: 0, scale: 0.5 }} 
             onClick={() => setIsSidebarOpen(true)} 
-            className="fixed top-6 left-6 z-50 p-3 bg-[#111] border border-[#ff0000] rounded-xl shadow-[0_0_15px_rgba(255,0,0,0.2)] md:hidden text-[#ff0000]"
+            className="fixed top-4 left-4 z-50 w-12 h-12 flex items-center justify-center bg-[#0a0a0a] border-2 border-[#ff0000] rounded-full shadow-[0_0_25px_rgba(255,0,0,0.6)] md:hidden text-[#ff0000]"
           >
-            <Menu size={20} />
+            <Menu size={20} strokeWidth={3} />
           </motion.button>
         )}
       </AnimatePresence>
 
-      <motion.div 
-        initial={false} 
-        animate={{ width: isSidebarOpen ? '320px' : '0px', opacity: isSidebarOpen ? 1 : 0 }} 
-        className={cn("h-full bg-[#050505] border-r border-[#ff000033] flex flex-col z-40 overflow-hidden relative", !isSidebarOpen && "border-none")} 
-      />
-
-      <div className="fixed top-0 left-0 h-full flex flex-col bg-[#050505] border-r border-[#ff000033] z-40 transition-all duration-300 shadow-[10px_0_30px_rgba(0,0,0,0.5)]" style={{ width: isSidebarOpen ? '320px' : '0px', visibility: isSidebarOpen ? 'visible' : 'hidden' }}>
-        <div className="p-6 border-b border-[#ff000022] flex justify-between items-center bg-[#080808]">
+      <div className="fixed top-0 left-0 h-full flex flex-col bg-[#050505] border-r-2 border-[#ff0000] z-40 transition-all duration-300 shadow-[20px_0_50px_rgba(255,0,0,0.15)]" style={{ width: isSidebarOpen ? '300px' : '0px', visibility: isSidebarOpen ? 'visible' : 'hidden' }}>
+        <div className="p-6 border-b border-[#ff000044] flex justify-between items-center bg-[#0a0a0a]">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-[#ff000011] border border-[#ff000044] rounded-lg text-[#ff0000] shadow-[0_0_10px_rgba(255,0,0,0.1)]">
-              <Shield size={20} />
+            <div className="p-2.5 bg-[#ff0000] rounded-xl text-white shadow-[0_0_20px_rgba(255,0,0,0.8)]">
+              <Shield size={20} strokeWidth={2.5} />
             </div>
-            <h1 className="text-lg font-black uppercase tracking-tighter text-white">NS <span className="text-[#ff0000]">MSGR</span></h1>
+            <h1 className="text-xl font-black tracking-tight text-white uppercase italic">NS <span className="text-[#ff0000] drop-shadow-[0_0_5px_#ff0000]">MSG</span></h1>
           </div>
-          <button onClick={() => setIsSidebarOpen(false)} className="p-2 hover:bg-[#ff000011] rounded-lg text-[#444] hover:text-[#ff0000] transition-all">
-            <ChevronLeft size={20} />
+          <button onClick={() => setIsSidebarOpen(false)} className="p-2 hover:bg-[#ff000022] rounded-full text-[#ff0000] transition-all">
+            <ChevronLeft size={24} strokeWidth={3} />
           </button>
         </div>
 
-        <div className="p-4 bg-[#0a0a0a] border-b border-[#ff000011] flex items-center gap-3 group">
-          <div className="w-10 h-10 bg-[#111] border border-[#ff000033] rounded-full flex items-center justify-center text-[#ff0000] shadow-[0_0_10px_rgba(255,0,0,0.1)] overflow-hidden">
-            {user.avatar ? <img src={user.avatar} className="w-full h-full object-cover" alt="" /> : <User size={20} />}
+        <div className="p-5 bg-[#080808] border-b border-[#ff000044] flex items-center gap-4">
+          <div className="w-12 h-12 bg-[#111] border-2 border-[#ff0000] rounded-full flex items-center justify-center text-[#ff0000] shadow-[0_0_15px_rgba(255,0,0,0.4)] overflow-hidden">
+            {user.avatar ? <img src={user.avatar} className="w-full h-full object-cover" alt="" /> : <User size={24} strokeWidth={2.5} />}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold truncate uppercase tracking-tight text-white">{user.name}</p>
-            <p className="text-[10px] text-[#ff000088] truncate font-mono">{user.email}</p>
+            <p className="text-[12px] font-black truncate text-white uppercase tracking-tight">{user.name}</p>
+            <p className="text-[10px] text-[#ff0000] truncate font-black tracking-widest uppercase opacity-90">{user.email}</p>
           </div>
-          <div className="flex gap-1">
-            <button 
-              onClick={() => {
-                const id = prompt("Google Client ID:", googleClientId);
-                if (id !== null) {
-                  setGoogleClientId(id);
-                  localStorage.setItem('ns_google_client_id', id);
-                }
-              }} 
-              className="p-2 text-[#333] hover:text-[#ff0000] transition-colors"
-              title="Настройки Google"
-            >
-              <Settings size={16} />
-            </button>
-            <button onClick={handleLogout} className="p-2 text-[#333] hover:text-[#ff0000] transition-colors"><LogOut size={16} /></button>
-          </div>
+          <button onClick={handleLogout} className="p-2 text-[#444] hover:text-[#ff0000] transition-colors"><LogOut size={18} /></button>
         </div>
 
-        <div className="flex-1 overflow-y-auto custom-scrollbar bg-black/20">
+        <div className="flex-1 overflow-y-auto custom-scrollbar bg-black/60">
           {chats.length === 0 ? (
-            <div className="p-10 text-center opacity-20">
-              <UserPlus size={40} className="mx-auto mb-4 text-[#ff0000]" />
-              <p className="text-xs text-white uppercase font-bold tracking-widest">Список пуст</p>
+            <div className="p-12 text-center">
+              <div className="w-16 h-16 bg-[#111] border-2 border-[#ff000033] rounded-full flex items-center justify-center mx-auto mb-4 text-[#ff0000] shadow-[0_0_30px_rgba(255,0,0,0.15)] opacity-40">
+                <UserPlus size={28} />
+              </div>
+              <p className="text-[11px] text-[#ff0000] font-black uppercase tracking-[0.4em] opacity-60">Нет контактов</p>
             </div>
           ) : (
-            chats.map(chat => (
-              <div 
-                key={chat.id} 
-                onClick={() => setActiveChat(chat)} 
-                className={cn(
-                  "p-4 flex items-center gap-4 cursor-pointer transition-all border-b border-[#ffffff05] group", 
-                  activeChat?.id === chat.id 
-                    ? "bg-[#ff000011] border-l-4 border-l-[#ff0000] shadow-[inset_10px_0_20px_rgba(255,0,0,0.05)]" 
-                    : "hover:bg-[#080808] border-l-4 border-l-transparent"
-                )}
-              >
-                <div className={cn(
-                  "w-12 h-12 rounded-xl flex items-center justify-center transition-all border",
-                  activeChat?.id === chat.id ? "bg-[#ff000022] border-[#ff000044] text-[#ff0000]" : "bg-[#111] border-[#222] text-[#444] group-hover:border-[#ff000044] group-hover:text-[#ff0000]"
-                )}>
-                  <User size={24} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex justify-between items-center mb-1">
-                    <h3 className={cn("text-sm font-black uppercase tracking-tight truncate", activeChat?.id === chat.id ? "text-white" : "text-[#888] group-hover:text-white")}>{chat.name}</h3>
-                    <span className="text-[9px] text-[#444] font-mono">{chat.timestamp}</span>
+            <div className="py-3 px-2">
+              {chats.map(chat => (
+                <div 
+                  key={chat.id} 
+                  onClick={() => {
+                    setActiveChat(chat);
+                    if (window.innerWidth < 768) setIsSidebarOpen(false);
+                  }} 
+                  className={cn(
+                    "px-4 py-4 flex items-center gap-4 cursor-pointer transition-all rounded-[1.25rem] mb-2 border-2 border-transparent relative group", 
+                    activeChat?.id === chat.id 
+                      ? "bg-[#ff000022] border-[#ff0000] text-white shadow-[0_0_25px_rgba(255,0,0,0.1)]" 
+                      : "hover:bg-[#111] text-[#888] hover:text-white hover:border-[#ff000033]"
+                  )}
+                >
+                  <div className={cn(
+                    "w-11 h-11 rounded-full flex items-center justify-center transition-all border-2",
+                    activeChat?.id === chat.id ? "bg-[#ff0000] border-[#ff0000] text-white shadow-[0_0_20px_rgba(255,0,0,0.5)]" : "bg-[#0a0a0a] border-[#222] text-[#444] group-hover:border-[#ff0000] group-hover:text-[#ff0000]"
+                  )}>
+                    <User size={22} strokeWidth={2.5} />
                   </div>
-                  <div className="flex justify-between items-center">
-                    <p className="text-[11px] text-[#444] truncate font-mono">{chat.email}</p>
-                    <button onClick={(e) => deleteContact(chat.id, e)} className="opacity-0 group-hover:opacity-100 p-1 text-[#333] hover:text-[#ff0000] transition-all">
-                      <Trash2 size={14} />
-                    </button>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex justify-between items-center mb-0.5">
+                      <h3 className={cn("text-[13px] font-black uppercase tracking-tight truncate", activeChat?.id === chat.id ? "text-white" : "text-[#ccc]")}>{chat.name}</h3>
+                      <span className={cn("text-[8px] font-black uppercase tracking-widest", activeChat?.id === chat.id ? "text-[#ff0000]" : "text-[#444]")}>{chat.timestamp}</span>
+                    </div>
+                    <p className={cn("text-[10px] truncate font-bold uppercase tracking-tighter", activeChat?.id === chat.id ? "text-white/80" : "text-[#555]")}>{chat.lastMessage}</p>
                   </div>
                 </div>
-              </div>
-            ))
+              ))}
+            </div>
           )}
         </div>
 
-        <div className="p-4 bg-[#080808] border-t border-[#ff000022]">
+        <div className="p-5 bg-[#0a0a0a] border-t-2 border-[#ff000033]">
           <button 
             onClick={() => setIsAddContactOpen(true)} 
-            className="w-full bg-[#ff0000] hover:bg-[#cc0000] text-white py-3 rounded-xl font-black uppercase text-xs tracking-widest flex items-center justify-center gap-2 transition-all active:scale-95 shadow-[0_5px_15px_rgba(255,0,0,0.2)]"
+            className="w-full bg-[#ff0000] hover:bg-[#cc0000] text-white py-4 rounded-2xl font-black uppercase text-[11px] tracking-[0.25em] flex items-center justify-center gap-2 transition-all active:scale-95 shadow-[0_12px_25px_rgba(255,0,0,0.4)]"
           >
-            <Plus size={18} /> Добавить контакт
+            <Plus size={20} strokeWidth={3} /> НАПИСАТЬ
           </button>
         </div>
       </div>
 
       <div className="flex-1 flex flex-col bg-black relative min-w-0">
-        {/* Desktop Sidebar Toggle - Smaller and nicer */}
         {!isSidebarOpen && (
           <button 
             onClick={() => setIsSidebarOpen(true)} 
-            className="absolute top-6 left-6 z-30 p-2.5 bg-[#0a0a0a] border border-[#ff000044] rounded-xl text-[#ff0000] hover:bg-[#ff000011] transition-all shadow-[0_0_15px_rgba(255,0,0,0.1)]"
+            className="absolute top-6 left-6 z-30 p-3 bg-[#0a0a0a] border-2 border-[#ff0000] rounded-xl text-[#ff0000] hover:bg-[#ff000011] transition-all shadow-[0_0_20px_rgba(255,0,0,0.3)] hidden md:block"
           >
-            <ChevronRight size={20} />
+            <ChevronRight size={24} strokeWidth={3} />
           </button>
         )}
 
         {activeChat ? (
           <>
-            <div className="h-20 px-8 bg-[#080808] border-b border-[#ff000022] flex justify-between items-center">
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 bg-[#111] border border-[#ff000044] rounded-xl flex items-center justify-center text-[#ff0000] shadow-[0_0_10px_rgba(255,0,0,0.1)]">
-                  <User size={20} />
+            <div className="h-20 px-4 md:px-10 bg-[#0a0a0a] border-b-2 border-[#ff0000] flex justify-between items-center z-30 shadow-[0_8px_30px_rgba(0,0,0,0.7)]">
+              <div className="flex items-center gap-4 md:gap-6">
+                <button 
+                  onClick={() => setIsSidebarOpen(true)} 
+                  className={cn("p-2 text-[#ff0000] hover:text-white transition-all md:hidden", isSidebarOpen && "hidden")}
+                >
+                  <Menu size={24} strokeWidth={3} />
+                </button>
+                <div className="w-12 h-12 bg-[#111] border-2 border-[#ff0000] rounded-full flex items-center justify-center text-[#ff0000] shadow-[0_0_20px_rgba(255,0,0,0.5)]">
+                  <User size={24} strokeWidth={2.5} />
                 </div>
-                <div>
-                  <h2 className="text-sm font-black uppercase tracking-widest text-white">{activeChat.name}</h2>
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-1">
-                      <div className={cn("w-1 h-1 rounded-full animate-pulse", isSyncing ? "bg-blue-500 shadow-[0_0_5px_#3b82f6]" : "bg-[#00ff00] shadow-[0_0_5px_#00ff00]")} />
-                      <span className={cn("text-[9px] font-bold uppercase tracking-widest", isSyncing ? "text-blue-500" : "text-[#00ff00]")}>
-                        {isSyncing ? 'Синхронизация...' : 'SECURE_NODE'}
-                      </span>
-                    </div>
-                    <span className="text-[10px] text-[#444] font-mono">{activeChat.email}</span>
+                <div className="min-w-0">
+                  <h2 className="text-base md:text-xl font-black text-white uppercase tracking-tight truncate italic drop-shadow-[0_0_8px_rgba(255,255,255,0.2)]">{activeChat.name}</h2>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <div className={cn("w-2 h-2 rounded-full", isSyncing ? "bg-blue-500 animate-pulse shadow-[0_0_10px_#3b82f6]" : "bg-[#ff0000] shadow-[0_0_8px_#ff0000]")}></div>
+                    <p className={cn("text-[9px] font-black uppercase tracking-[0.4em]", isSyncing ? "text-blue-500" : "text-[#ff0000]")}>
+                      {isSyncing ? 'СИНХРОНИЗАЦИЯ...' : 'ЗАШИФРОВАННЫЙ КАНАЛ'}
+                    </p>
                   </div>
                 </div>
               </div>
-              
-              <div className="flex items-center gap-4 md:gap-6">
-                <button onClick={handleImportEncrypted} title="Импорт" className="p-2 text-[#444] hover:text-[#ff0000] transition-colors">
-                  <Plus size={20} />
+              <div className="flex items-center gap-2 md:gap-4">
+                <button onClick={() => checkInbox()} className="p-2.5 text-[#444] hover:text-[#ff0000] transition-all bg-[#111] border border-[#222] rounded-xl hover:border-[#ff000044]" title="Update">
+                  <RefreshCw size={20} strokeWidth={2.5} className={cn(isSyncing && "animate-spin text-[#ff0000]")} />
                 </button>
-                <button onClick={checkInbox} disabled={isTransporting} className="p-2 text-[#444] hover:text-[#ff0000] transition-all disabled:opacity-20">
-                  <RefreshCw size={20} className={isTransporting ? 'animate-spin' : ''} />
+                <button onClick={(e) => deleteContact(activeChat.id, e)} className="p-2.5 text-[#444] hover:text-[#ff0000] transition-all bg-[#111] border border-[#222] rounded-xl hover:border-[#ff000044]">
+                  <Trash2 size={20} strokeWidth={2.5} />
                 </button>
-                <div className="hidden md:block pl-6 border-l border-[#ff000011] text-right">
-                  <p className="text-[8px] text-[#444] uppercase font-black mb-1 tracking-tighter">Session Key</p>
-                  <p className="text-[10px] text-[#ff0000] font-mono tracking-tighter opacity-80">{sessionKey?.substring(0, 16)}</p>
-                </div>
               </div>
             </div>
 
-            <div ref={scrollRef} className="flex-1 overflow-y-auto p-8 custom-scrollbar space-y-6 bg-[radial-gradient(circle_at_center,_#ff000005_0%,_transparent_70%)]">
-              {messages.map((msg) => (
-                <div key={msg.id} className={cn("flex flex-col", msg.isSystem ? "items-center" : msg.sender === 'me' ? "items-end" : "items-start")}>
-                  {msg.isSystem ? (
-                    <div className="px-4 py-1 bg-[#0a0a0a] border border-[#ff000022] rounded text-[9px] text-[#ff0000] uppercase font-bold tracking-[0.2em] shadow-[0_0_10px_rgba(255,0,0,0.05)]">
-                      {msg.text}
-                    </div>
-                  ) : (
-                    <div className="max-w-[85%] md:max-w-[70%] group">
-                      <div className={cn(
-                        "px-5 py-3 rounded-2xl text-sm leading-relaxed shadow-lg transition-all", 
-                        msg.sender === 'me' 
-                          ? "bg-[#ff0000] text-white rounded-tr-none shadow-[0_5px_15px_rgba(255,0,0,0.2)]" 
-                          : "bg-[#111] text-[#ccc] border border-[#ff000011] rounded-tl-none"
-                      )}>
+            <div className="flex-1 overflow-y-auto p-4 md:p-10 space-y-6 custom-scrollbar bg-black bg-[radial-gradient(circle_at_center,_#ff000008_0%,_transparent_70%)]" ref={scrollRef}>
+              <AnimatePresence initial={false}>
+                {messages.map((msg, idx) => (
+                  <motion.div 
+                    key={msg.id || idx} 
+                    initial={{ opacity: 0, y: 15, scale: 0.9 }} 
+                    animate={{ opacity: 1, y: 0, scale: 1 }} 
+                    className={cn(
+                      "flex w-full mb-2",
+                      msg.sender === 'me' ? "justify-end" : msg.isSystem ? "justify-center" : "justify-start"
+                    )}
+                  >
+                    {msg.isSystem ? (
+                      <div className="bg-[#0a0a0a] border-2 border-[#ff000066] px-6 py-1.5 rounded-full text-[9px] font-black text-[#ff0000] uppercase tracking-[0.5em] shadow-[0_0_20px_rgba(255,0,0,0.2)]">
                         {msg.text}
                       </div>
+                    ) : (
                       <div className={cn(
-                        "flex items-center gap-2 mt-2 px-1 text-[9px] font-bold uppercase tracking-tighter", 
-                        msg.sender === 'me' ? "justify-end text-[#444]" : "text-[#333]"
+                        "max-w-[85%] md:max-w-[60%] px-5 py-4 rounded-[2rem] relative group shadow-[0_10px_40px_rgba(0,0,0,0.6)] transition-all border-2",
+                        msg.sender === 'me' 
+                          ? "bg-[#ff0000] border-[#ff0000] text-white rounded-br-none shadow-[0_8px_30px_rgba(255,0,0,0.3)]" 
+                          : "bg-[#0a0a0a] text-[#ccc] border-[#ff000044] rounded-bl-none shadow-[0_8px_25px_rgba(0,0,0,0.8)]"
                       )}>
-                        <span>{msg.timestamp}</span>
-                        {msg.sender === 'me' && (
-                          msg.status === 'sending' ? <Loader2 size={10} className="animate-spin text-[#ff0000]" /> : <CheckCheck size={10} className="text-[#ff0000]" />
-                        )}
+                        <p className="text-[15px] leading-relaxed break-words font-semibold tracking-tight">{msg.text}</p>
+                        <div className={cn(
+                          "flex items-center gap-2 mt-2 justify-end opacity-60",
+                          msg.sender === 'me' ? "text-white" : "text-[#ff0000]"
+                        )}>
+                          <span className="text-[9px] font-black uppercase tracking-widest">{msg.timestamp}</span>
+                          {msg.sender === 'me' && (
+                            <div className="flex">
+                              {msg.status === 'sent' ? <CheckCheck size={12} strokeWidth={3} className="text-white" /> : <Loader2 size={12} strokeWidth={3} className="animate-spin" />}
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  )}
-                </div>
-              ))}
+                    )}
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+              
               {isTransporting && (
-                <div className="flex justify-center italic text-[#ff0000] text-[10px] font-black uppercase tracking-widest animate-pulse">
-                  {transportStatus}
-                </div>
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex justify-center py-4">
+                  <div className="bg-black border-2 border-[#ff0000] px-6 py-2 rounded-full flex items-center gap-3 shadow-[0_0_25px_rgba(255,0,0,0.3)]">
+                    <Loader2 size={14} strokeWidth={3} className="text-[#ff0000] animate-spin" />
+                    <span className="text-[10px] font-black text-[#ff0000] uppercase tracking-[0.3em] animate-pulse">{transportStatus}</span>
+                  </div>
+                </motion.div>
               )}
             </div>
 
-            <div className="p-6 bg-[#080808] border-t border-[#ff000022]">
-              <form onSubmit={handleSendMessage} className="max-w-4xl mx-auto flex gap-4">
+            <div className="p-5 md:p-8 bg-[#0a0a0a] border-t-2 border-[#ff0000]">
+              <form onSubmit={handleSendMessage} className="max-w-5xl mx-auto relative flex items-end gap-4 md:gap-6">
                 <div className="flex-1 relative group">
-                  <input 
-                    type="text" 
+                  <textarea 
                     value={newMessage} 
                     onChange={(e) => setNewMessage(e.target.value)} 
-                    placeholder="Введите сообщение..." 
-                    className="w-full bg-[#0a0a0a] border border-[#ff000022] rounded-2xl py-4 pl-6 pr-14 text-sm text-white outline-none focus:border-[#ff000088] transition-all placeholder-[#333]" 
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSendMessage(e);
+                      }
+                    }}
+                    placeholder="СООБЩЕНИЕ..."
+                    rows="1"
+                    className="w-full bg-[#050505] border-2 border-[#222] group-focus-within:border-[#ff0000] rounded-[1.5rem] py-5 pl-7 pr-16 text-white placeholder-[#222] outline-none transition-all resize-none overflow-hidden max-h-40 shadow-2xl text-base font-medium"
+                    style={{ height: 'auto' }}
+                    onInput={(e) => {
+                      e.target.style.height = 'auto';
+                      e.target.style.height = e.target.scrollHeight + 'px';
+                    }}
                   />
-                  <div className="absolute right-5 top-1/2 -translate-y-1/2 text-[#222] group-focus-within:text-[#ff0000] transition-colors">
-                    <Lock size={18} />
-                  </div>
+                  <button 
+                    type="button"
+                    onClick={handleImportEncrypted}
+                    className="absolute right-5 bottom-5 p-2 text-[#222] hover:text-[#ff0000] transition-all bg-[#0a0a0a] rounded-xl border border-[#111] hover:border-[#ff000033]"
+                    title="Расшифровать"
+                  >
+                    <Lock size={20} strokeWidth={2.5} />
+                  </button>
                 </div>
                 <button 
                   type="submit" 
-                  disabled={!newMessage.trim() || isTransporting} 
+                  disabled={!newMessage.trim()}
                   className={cn(
-                    "w-14 h-14 rounded-2xl flex items-center justify-center transition-all shadow-lg active:scale-95", 
-                    newMessage.trim() ? "bg-[#ff0000] text-white shadow-[0_0_20px_rgba(255,0,0,0.3)]" : "bg-[#111] text-[#333] border border-[#222]"
+                    "w-16 h-16 rounded-[1.5rem] flex items-center justify-center transition-all active:scale-90 border-2",
+                    newMessage.trim() 
+                      ? "bg-[#ff0000] border-[#ff0000] text-white shadow-[0_0_35px_rgba(255,0,0,0.5)]" 
+                      : "bg-[#111] border-[#222] text-[#222] opacity-50 cursor-not-allowed"
                   )}
                 >
-                  <Send size={22} strokeWidth={2.5} />
+                  <Send size={28} strokeWidth={3} className={cn(newMessage.trim() && "translate-x-0.5 -translate-y-0.5")} />
                 </button>
               </form>
             </div>
           </>
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center p-12 text-center relative overflow-hidden">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_#ff000010_0%,_transparent_70%)]" />
-            <div className="relative mb-8">
-              <div className="absolute inset-0 bg-[#ff0000] blur-[100px] opacity-20 animate-pulse" />
-              <Shield size={120} className="text-[#111] relative z-10 opacity-50" strokeWidth={0.5} />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_#ff00000c_0%,_transparent_70%)]" />
+            <div className="relative mb-10 scale-125">
+              <div className="absolute inset-0 bg-[#ff0000] blur-[100px] opacity-15 animate-pulse" />
+              <Shield size={120} className="text-[#111] relative z-10 drop-shadow-[0_0_30px_rgba(255,0,0,0.1)]" strokeWidth={0.2} />
             </div>
-            <h2 className="text-2xl font-black uppercase tracking-[0.3em] text-[#222] mb-2 relative z-10">NS Messenger</h2>
-            <p className="text-[#ff000044] text-[10px] font-black uppercase tracking-[0.5em] relative z-10">Select Secure Node</p>
+            <h2 className="text-2xl font-black uppercase tracking-[0.5em] text-[#1a1a1a] mb-3 relative z-10 italic">NS Messenger</h2>
+            <div className="h-0.5 w-24 bg-gradient-to-r from-transparent via-[#ff000044] to-transparent mb-4" />
+            <p className="text-[#ff000033] text-[10px] font-black uppercase tracking-[0.8em] relative z-10">Выберите защищенный узел</p>
           </div>
         )}
       </div>
       <AnimatePresence>
         {isAddContactOpen && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsAddContactOpen(false)} className="absolute inset-0 bg-black/90 backdrop-blur-sm" />
-            <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className="relative w-full max-w-sm bg-[#0a0a0a] border border-[#ff000044] rounded-3xl p-8 shadow-[0_20px_50px_rgba(0,0,0,0.5),0_0_30px_rgba(255,0,0,0.1)]">
-              <h2 className="text-xl font-black uppercase tracking-tighter mb-6 flex items-center gap-3 text-white"><UserPlus className="text-[#ff0000]" /> Новый контакт</h2>
-              <form onSubmit={addContact} className="space-y-4">
-                <div><label className="text-[10px] font-bold text-[#444] mb-2 block uppercase tracking-widest">Имя</label><input type="text" value={newContactName} onChange={(e) => setNewContactName(e.target.value)} required className="w-full bg-[#111] border border-[#ff000022] rounded-xl py-3 px-4 text-white outline-none focus:border-[#ff0000] transition-all" /></div>
-                <div><label className="text-[10px] font-bold text-[#444] mb-2 block uppercase tracking-widest">Email</label><input type="email" value={newContactEmail} onChange={(e) => setNewContactEmail(e.target.value)} required className="w-full bg-[#111] border border-[#ff000022] rounded-xl py-3 px-4 text-white outline-none focus:border-[#ff0000] transition-all" /></div>
-                <div className="flex gap-3 pt-4"><button type="button" onClick={() => setIsAddContactOpen(false)} className="flex-1 py-3 rounded-xl font-bold uppercase text-[10px] tracking-widest border border-[#222] text-[#444] hover:text-white transition-colors">Отмена</button><button type="submit" className="flex-1 bg-[#ff0000] py-3 rounded-xl font-bold uppercase text-[10px] tracking-widest text-white shadow-[0_5px_15px_rgba(255,0,0,0.2)]">Добавить</button></div>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsAddContactOpen(false)} className="absolute inset-0 bg-black/95 backdrop-blur-md" />
+            <motion.div initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 20 }} className="relative w-full max-w-md bg-[#050505] border-2 border-[#ff0000] rounded-[2.5rem] p-10 shadow-[0_30px_80px_rgba(0,0,0,0.9),0_0_50px_rgba(255,0,0,0.2)]">
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#ff0000] to-transparent" />
+              <h2 className="text-2xl font-black uppercase tracking-tighter mb-8 flex items-center gap-4 text-white italic"><UserPlus className="text-[#ff0000]" size={28} strokeWidth={2.5} /> НОВЫЙ КОНТАКТ</h2>
+              <form onSubmit={addContact} className="space-y-6">
+                <div><label className="text-[10px] font-black text-[#444] mb-2.5 block uppercase tracking-[0.3em]">ПОЗЫВНОЙ</label><input type="text" value={newContactName} onChange={(e) => setNewContactName(e.target.value)} required className="w-full bg-[#0a0a0a] border-2 border-[#222] rounded-2xl py-4 px-6 text-white outline-none focus:border-[#ff0000] transition-all text-base font-bold shadow-inner" /></div>
+                <div><label className="text-[10px] font-black text-[#444] mb-2.5 block uppercase tracking-[0.3em]">EMAIL ШЛЮЗ</label><input type="email" value={newContactEmail} onChange={(e) => setNewContactEmail(e.target.value)} required className="w-full bg-[#0a0a0a] border-2 border-[#222] rounded-2xl py-4 px-6 text-white outline-none focus:border-[#ff0000] transition-all text-base font-bold shadow-inner" /></div>
+                <div className="flex gap-4 pt-6"><button type="button" onClick={() => setIsAddContactOpen(false)} className="flex-1 py-4.5 rounded-2xl font-black uppercase text-[10px] tracking-[0.2em] border-2 border-[#1a1a1a] text-[#444] hover:text-white hover:border-[#333] transition-all">ОТМЕНА</button><button type="submit" className="flex-1 bg-[#ff0000] py-4.5 rounded-2xl font-black uppercase text-[10px] tracking-[0.2em] text-white shadow-[0_15px_30px_rgba(255,0,0,0.4)] hover:bg-[#cc0000] active:scale-95 transition-all">УСТАНОВИТЬ</button></div>
               </form>
             </motion.div>
           </div>
         )}
       </AnimatePresence>
-      <style dangerouslySetInnerHTML={{ __html: `.custom-scrollbar::-webkit-scrollbar { width: 4px; } .custom-scrollbar::-webkit-scrollbar-track { background: transparent; } .custom-scrollbar::-webkit-scrollbar-thumb { background: #111; border-radius: 10px; } .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #ff0000; } @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } } .animate-spin { animation: spin 1s linear infinite; }`}} />
+      <style dangerouslySetInnerHTML={{ __html: `.custom-scrollbar::-webkit-scrollbar { width: 4px; } .custom-scrollbar::-webkit-scrollbar-track { background: transparent; } .custom-scrollbar::-webkit-scrollbar-thumb { background: #111; border-radius: 10px; border: 1px solid #222; } .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #ff0000; border-color: #ff0000; shadow: 0 0 10px #ff0000; }`}} />
     </div>
   );
 }
