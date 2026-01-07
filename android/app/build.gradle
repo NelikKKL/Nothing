@@ -2,7 +2,7 @@ apply plugin: 'com.android.application'
 
 android {
     namespace = "com.ns.messenger"
-    compileSdk = rootProject.ext.compileSdkVersion
+    compileSdk rootProject.ext.compileSdkVersion
     defaultConfig {
         applicationId "com.ns.messenger"
         minSdkVersion rootProject.ext.minSdkVersion
@@ -42,5 +42,3 @@ dependencies {
 }
 
 apply from: 'capacitor.build.gradle'
-
-dependencies {
