@@ -62,7 +62,12 @@ function App() {
             })
             .then(res => res.json())
             .then(data => {
-              const newUser = { name: data.name, email: data.email, avatar: data.picture };
+              const newUser = { 
+                name: data.name, 
+                email: data.email, 
+                avatar: data.picture,
+                mode: 'api' // Режим с Google API
+              };
               localStorage.setItem('ns_user', JSON.stringify(newUser));
               setUser(newUser);
             });
@@ -161,7 +166,12 @@ function App() {
   const handleRegister = (e) => {
     e.preventDefault();
     if (!regName.trim() || !regEmail.trim()) return;
-    const newUser = { name: regName, email: regEmail };
+    const newUser = { 
+      name: regName, 
+      email: regEmail, 
+      mode: 'manual', // Режим без Google API
+      avatar: null 
+    };
     localStorage.setItem('ns_user', JSON.stringify(newUser));
     setUser(newUser);
   };
@@ -379,7 +389,7 @@ function App() {
 
           <div className="relative my-8">
             <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-[#1a1a1a]"></div></div>
-            <div className="relative flex justify-center text-[9px] uppercase font-black tracking-[0.3em]"><span className="bg-[#050505] px-4 text-[#333]">Биометрия Google</span></div>
+            <div className="relative flex justify-center text-[9px] uppercase font-black tracking-[0.3em]"><span className="bg-[#050505] px-4 text-[#333]">ИЛИ БЫСТРЫЙ ВХОД ЧЕРЕЗ GMAIL API</span></div>
           </div>
 
           <button 
@@ -516,11 +526,11 @@ function App() {
                 <div className="min-w-0">
                   <h2 className="text-base md:text-xl font-black text-white uppercase tracking-tight truncate italic drop-shadow-[0_0_8px_rgba(255,255,255,0.2)]">{activeChat.name}</h2>
                   <div className="flex items-center gap-2 mt-0.5">
-                    <div className={cn("w-2 h-2 rounded-full", isSyncing ? "bg-blue-500 animate-pulse shadow-[0_0_10px_#3b82f6]" : "bg-[#ff0000] shadow-[0_0_8px_#ff0000]")}></div>
-                    <p className={cn("text-[9px] font-black uppercase tracking-[0.4em]", isSyncing ? "text-blue-500" : "text-[#ff0000]")}>
-                      {isSyncing ? 'СИНХРОНИЗАЦИЯ...' : 'ЗАШИФРОВАННЫЙ КАНАЛ'}
-                    </p>
-                  </div>
+                      <div className={cn("w-2 h-2 rounded-full", user.mode === 'api' ? (isSyncing ? "bg-blue-500 animate-pulse shadow-[0_0_10px_#3b82f6]" : "bg-green-500 shadow-[0_0_8px_#22c55e]") : "bg-[#ff0000] shadow-[0_0_8px_#ff0000]")}></div>
+                      <p className={cn("text-[9px] font-black uppercase tracking-[0.4em]", user.mode === 'api' ? (isSyncing ? "text-blue-500" : "text-green-500") : "text-[#ff0000]")}>
+                        {user.mode === 'api' ? (isSyncing ? 'СИНХРОНИЗАЦИЯ...' : 'GMAIL API АКТИВЕН') : 'АВТОНОМНЫЙ РЕЖИМ'}
+                      </p>
+                    </div>
                 </div>
               </div>
               <div className="flex items-center gap-2 md:gap-4">

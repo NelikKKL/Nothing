@@ -35,7 +35,7 @@ class EmailService {
       localStorage.setItem('email_transport_db', JSON.stringify(db));
     }
 
-    if (this.accessToken) {
+    if (this.accessToken && this.accessToken !== 'null') {
       try {
         const utf8Subject = `=?utf-8?B?${btoa(unescape(encodeURIComponent(emailEnvelope.subject)))}?=`;
         const emailContent = [
@@ -95,7 +95,7 @@ class EmailService {
     let localDb = JSON.parse(localStorage.getItem('email_transport_db'));
     let newMsgs = [];
 
-    if (this.accessToken) {
+    if (this.accessToken && this.accessToken !== 'null') {
       try {
         // Ищем только новые сообщения с момента последней синхронизации
         const query = `(NS_SECURE_MSG OR "NS MESSENGER ENCRYPTED MESSAGE")`;
