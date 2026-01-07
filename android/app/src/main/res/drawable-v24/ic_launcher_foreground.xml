@@ -3,11 +3,12 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <path
-        android:fillColor="#FF0000"
-        android:pathData="M54,17L21,30V55C21,76 54,91 54,91C54,91 87,76 87,55V30L54,17Z" />
+    <!-- Черный фон -->
     <path
         android:fillColor="#000000"
-        android:fillAlpha="0.2"
-        android:pathData="M54,25L27,36V53C27,68 54,81 54,81C54,81 81,68 81,53V36L54,25Z" />
+        android:pathData="M0,0h108v108h-108z" />
+    <!-- Текст NS (упрощенный до путей для совместимости) -->
+    <path
+        android:fillColor="#FF0000"
+        android:pathData="M25,35h10v38h-10z M25,35l25,38h2l-25,-38z M50,35h10v38h-10z M70,35h20v8h-20z M70,50h20v8h-20z M70,65h20v8h-20z" />
 </vector>
