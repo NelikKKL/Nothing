@@ -1,7 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, Lock, MessageSquare, Settings, Shield, User, Mail, Plus, Loader2, CheckCheck, RefreshCw, ArrowRight } from 'lucide-react';
+import { 
+  Send, Lock, MessageSquare, Settings, Shield, User, Mail, 
+  Plus, Loader2, CheckCheck, RefreshCw, ArrowRight, Menu, X, 
+  Trash2, UserPlus, LogOut, ChevronLeft, ChevronRight
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { generateSessionKey, encryptMessage, decryptMessage } from './crypto';
 import { emailService } from './emailService';
+import { cn } from './utils';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -15,34 +21,63 @@ function App() {
   const [isTransporting, setIsTransporting] = useState(false);
   const [transportStatus, setTransportStatus] = useState('');
   
-  const [chats] = useState([
-    { id: 1, name: 'Alice', email: 'alice@example.com', lastMessage: 'Hey there!', timestamp: '10:30' },
-    { id: 2, name: 'Bob', email: 'bob@example.com', lastMessage: 'Did you see the key?', timestamp: '09:15' },
-    { id: 3, name: 'Charlie', email: 'charlie@example.com', lastMessage: 'Encrypted message', timestamp: 'Yesterday' },
-  ]);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [chats, setChats] = useState([]);
+  const [isAddContactOpen, setIsAddContactOpen] = useState(false);
+  const [newContactName, setNewContactName] = useState('');
+  const [newContactEmail, setNewContactEmail] = useState('');
 
   const scrollRef = useRef(null);
 
-  // Проверка регистрации при загрузке
+  // Загрузка данных при старте
   useEffect(() => {
     const savedUser = localStorage.getItem('ns_user');
     if (savedUser) {
       setUser(JSON.parse(savedUser));
     }
+
+    const savedChats = localStorage.getItem('ns_chats');
+    if (savedChats) {
+      setChats(JSON.parse(savedChats));
+    } else {
+      // Пустой список по умолчанию
+      setChats([]);
+    }
   }, []);
+
+  // Сохранение чатов
+  useEffect(() => {
+    if (chats.length > 0) {
+      localStorage.setItem('ns_chats', JSON.stringify(chats));
+    }
+  }, [chats]);
 
   // Генерируем новый ключ при заходе в чат
   useEffect(() => {
     if (activeChat) {
       const newKey = generateSessionKey();
       setSessionKey(newKey);
-      setMessages([
-        { id: 0, text: `--- НОВЫЙ КЛЮЧ СЕССИИ СГЕНЕРИРОВАН ---`, isSystem: true },
-        { id: 1, text: 'Канал связи через почту готов. Все сообщения шифруются AES-256.', sender: 'system', timestamp: 'now' }
-      ]);
+      
+      // Загружаем историю сообщений для этого чата из localStorage
+      const chatHistory = localStorage.getItem(`ns_history_${activeChat.email}`);
+      if (chatHistory) {
+        setMessages(JSON.parse(chatHistory));
+      } else {
+        setMessages([
+          { id: 'sys_1', text: `--- ЗАЩИЩЕННЫЙ КАНАЛ УСТАНОВЛЕН ---`, isSystem: true },
+          { id: 'sys_2', text: 'Все сообщения шифруются AES-256. Ключ сессии обновлен.', sender: 'system', timestamp: 'now' }
+        ]);
+      }
       checkInbox();
     }
   }, [activeChat]);
+
+  // Сохранение истории сообщений
+  useEffect(() => {
+    if (activeChat && messages.length > 0) {
+      localStorage.setItem(`ns_history_${activeChat.email}`, JSON.stringify(messages));
+    }
+  }, [messages, activeChat]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -59,22 +94,73 @@ function App() {
     setUser(newUser);
   };
 
+  const handleLogout = () => {
+    if (window.confirm('Вы уверены, что хотите выйти? Все локальные данные будут сохранены.')) {
+      setUser(null);
+    }
+  };
+
   const checkInbox = async () => {
-    if (!activeChat || !user) return;
+    if (!activeChat || !user || !sessionKey) return;
     setIsTransporting(true);
-    setTransportStatus('IMAP: Проверка входящих писем...');
+    setTransportStatus('Проверка входящих шлюзов...');
     
     try {
       const inbox = await emailService.fetchInbox(user.email);
       const chatEmails = inbox.filter(mail => mail.from === activeChat.email);
-      if (chatEmails.length > 0) {
-        console.log("Found emails from chat partner:", chatEmails);
+      
+      let newMsgsFound = false;
+      const updatedMessages = [...messages];
+
+      chatEmails.forEach(mail => {
+        // Проверяем, нет ли уже такого сообщения в истории
+        if (!messages.find(m => m.id === mail.id || m.encrypted === mail.body)) {
+          const decrypted = decryptMessage(mail.body, sessionKey);
+          
+          if (decrypted) {
+            newMsgsFound = true;
+            updatedMessages.push({
+              id: mail.id,
+              text: decrypted,
+              encrypted: mail.body,
+              sender: 'partner',
+              timestamp: new Date(mail.sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            });
+          }
+        }
+      });
+
+      if (newMsgsFound) {
+        setMessages(updatedMessages);
       }
     } finally {
       setTimeout(() => {
         setIsTransporting(false);
         setTransportStatus('');
-      }, 500);
+      }, 800);
+    }
+  };
+
+  const handleImportEncrypted = async () => {
+    const text = prompt('Вставьте зашифрованный текст из письма:');
+    if (!text || !sessionKey) return;
+
+    // Пытаемся найти блок зашифрованного текста в письме
+    const match = text.match(/--- NS MESSENGER ENCRYPTED MESSAGE ---\n\n([\s\S]+?)\n\n---/);
+    const encryptedData = match ? match[1].trim() : text.trim();
+
+    const decrypted = decryptMessage(encryptedData, sessionKey);
+    if (decrypted) {
+      const msgObj = {
+        id: Date.now(),
+        text: decrypted,
+        encrypted: encryptedData,
+        sender: 'partner',
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+      setMessages(prev => [...prev, msgObj]);
+    } else {
+      alert('Ошибка: Не удалось расшифровать. Возможно, неверный ключ сессии.');
     }
   };
 
@@ -99,20 +185,20 @@ function App() {
     setMessages(prev => [...prev, msgObj]);
 
     setIsTransporting(true);
-    setTransportStatus('SMTP: Упаковка в письмо и отправка...');
+    setTransportStatus('Шифрование и отправка...');
     
     try {
       await emailService.sendAsEmail({
         to: activeChat.email,
         from: user.email,
-        subject: `ENC_MSG_${tempId}`,
+        subject: `NS_MSG_${tempId}`,
         encryptedBody: encrypted,
         metadata: { sessionId: sessionKey.substring(0, 8) }
       });
       
       setMessages(prev => prev.map(m => m.id === tempId ? { ...m, status: 'sent' } : m));
     } catch (err) {
-      setTransportStatus('Ошибка SMTP транспорта!');
+      setTransportStatus('Ошибка отправки!');
     } finally {
       setTimeout(() => {
         setIsTransporting(false);
@@ -121,225 +207,318 @@ function App() {
     }
   };
 
+  const addContact = (e) => {
+    e.preventDefault();
+    if (!newContactName.trim() || !newContactEmail.trim()) return;
+    
+    const newContact = {
+      id: Date.now(),
+      name: newContactName,
+      email: newContactEmail,
+      lastMessage: 'Контакт добавлен',
+      timestamp: 'Только что'
+    };
+    
+    setChats(prev => [newContact, ...prev]);
+    setNewContactName('');
+    setNewContactEmail('');
+    setIsAddContactOpen(false);
+  };
+
+  const deleteContact = (id, e) => {
+    e.stopPropagation();
+    if (window.confirm('Удалить контакт и историю переписки?')) {
+      const contact = chats.find(c => c.id === id);
+      setChats(prev => prev.filter(c => c.id !== id));
+      if (activeChat?.id === id) setActiveChat(null);
+      localStorage.removeItem(`ns_history_${contact.email}`);
+    }
+  };
+
   // Экран регистрации
   if (!user) {
     return (
-      <div className="flex h-screen bg-dark-900 items-center justify-center" style={{ backgroundColor: '#121212', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontFamily: 'sans-serif' }}>
-        <div style={{ width: '100%', maxWidth: '400px', padding: '40px', backgroundColor: '#1e1e1e', borderRadius: '20px', boxShadow: '0 10px 30px rgba(0,0,0,0.5)', textAlign: 'center' }}>
-          <div style={{ marginBottom: '30px' }}>
-            <div style={{ display: 'inline-flex', padding: '15px', backgroundColor: '#2d2d2d', borderRadius: '50%', color: '#ff0000', marginBottom: '20px' }}>
-              <Shield size={40} />
+      <div className="flex h-screen bg-black items-center justify-center p-4">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="w-full max-w-md p-8 bg-[#0a0a0a] border border-[#1a1a1a] rounded-3xl shadow-2xl text-center"
+        >
+          <div className="mb-8">
+            <div className="inline-flex p-5 bg-[#1a0000] border border-[#330000] rounded-full text-[#ff0000] mb-6">
+              <Shield size={48} strokeWidth={1.5} />
             </div>
-            <h1 style={{ margin: '0 0 10px 0', fontSize: '24px', fontWeight: 'bold' }}>NS Messenger</h1>
-            <p style={{ color: '#888', fontSize: '14px', margin: 0 }}>Создайте защищенный профиль</p>
+            <h1 className="text-3xl font-black tracking-tighter text-white mb-2 uppercase">NS Messenger</h1>
+            <p className="text-[#666] text-sm">Вход в защищенный узел связи</p>
           </div>
 
-          <form onSubmit={handleRegister} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-            <div style={{ textAlign: 'left' }}>
-              <label style={{ fontSize: '12px', color: '#666', marginBottom: '5px', display: 'block', textTransform: 'uppercase' }}>Ваше имя</label>
-              <div style={{ position: 'relative' }}>
+          <form onSubmit={handleRegister} className="flex flex-col gap-5">
+            <div className="text-left">
+              <label className="text-[10px] font-bold text-[#444] mb-2 block uppercase tracking-widest">Идентификатор</label>
+              <div className="relative">
                 <input 
                   type="text" 
                   value={regName}
                   onChange={(e) => setRegName(e.target.value)}
-                  placeholder="Иван Иванов" 
+                  placeholder="Ваш позывной" 
                   required
-                  style={{ width: '100%', backgroundColor: '#2d2d2d', border: '1px solid #333', borderRadius: '10px', padding: '12px 12px 12px 40px', color: 'white', outline: 'none' }}
+                  className="w-full bg-[#111] border border-[#222] rounded-xl py-4 pl-12 pr-4 text-white placeholder-[#333] outline-none focus:border-[#ff0000] transition-all"
                 />
-                <User size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#ff0000' }} />
+                <User size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#ff0000]" />
               </div>
             </div>
 
-            <div style={{ textAlign: 'left' }}>
-              <label style={{ fontSize: '12px', color: '#666', marginBottom: '5px', display: 'block', textTransform: 'uppercase' }}>Электронная почта</label>
-              <div style={{ position: 'relative' }}>
+            <div className="text-left">
+              <label className="text-[10px] font-bold text-[#444] mb-2 block uppercase tracking-widest">Почтовый шлюз</label>
+              <div className="relative">
                 <input 
                   type="email" 
                   value={regEmail}
                   onChange={(e) => setRegEmail(e.target.value)}
-                  placeholder="name@mail.com" 
+                  placeholder="email@example.com" 
                   required
-                  style={{ width: '100%', backgroundColor: '#2d2d2d', border: '1px solid #333', borderRadius: '10px', padding: '12px 12px 12px 40px', color: 'white', outline: 'none' }}
+                  className="w-full bg-[#111] border border-[#222] rounded-xl py-4 pl-12 pr-4 text-white placeholder-[#333] outline-none focus:border-[#ff0000] transition-all"
                 />
-                <Mail size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#ff0000' }} />
+                <Mail size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#ff0000]" />
               </div>
             </div>
 
             <button 
               type="submit"
-              style={{ 
-                marginTop: '10px',
-                backgroundColor: '#ff0000', 
-                color: 'white', 
-                border: 'none', 
-                borderRadius: '10px', 
-                padding: '14px', 
-                fontWeight: 'bold', 
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '10px',
-                transition: 'all 0.2s'
-              }}
+              className="mt-4 bg-[#ff0000] hover:bg-[#cc0000] text-white py-4 rounded-xl font-black uppercase tracking-widest flex items-center justify-center gap-3 transition-all active:scale-95 shadow-lg shadow-[#ff000022]"
             >
-              Продолжить <ArrowRight size={18} />
+              Инициализировать <ArrowRight size={20} />
             </button>
           </form>
 
-          <p style={{ marginTop: '25px', fontSize: '11px', color: '#555' }}>
-            Ваши данные сохраняются локально и используются для идентификации в почтовом канале.
+          <p className="mt-8 text-[10px] text-[#333] leading-relaxed uppercase tracking-tighter">
+            Шифрование AES-256 • Локальное хранение • Нулевая отчетность
           </p>
-        </div>
+        </motion.div>
       </div>
     );
   }
 
-  // Основной интерфейс (показывается только если user != null)
   return (
-    <div className="flex h-screen bg-dark-900" style={{ color: 'white', fontFamily: 'sans-serif' }}>
+    <div className="flex h-screen bg-black text-white font-sans overflow-hidden">
+      {/* Sidebar Overlay for mobile */}
+      <AnimatePresence>
+        {!isSidebarOpen && (
+          <motion.button
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setIsSidebarOpen(true)}
+            className="fixed bottom-6 left-6 z-50 p-4 bg-[#ff0000] rounded-full shadow-xl shadow-[#ff000044] md:hidden"
+          >
+            <Menu size={24} />
+          </motion.button>
+        )}
+      </AnimatePresence>
+
       {/* Sidebar */}
-      <div className="w-80 bg-dark-800 border-r flex flex-col" style={{ width: '320px', borderRight: '1px solid #2d2d2d' }}>
-        <div className="p-4 border-b flex justify-between items-center" style={{ borderBottom: '1px solid #2d2d2d' }}>
-          <div className="flex flex-col">
-            <h1 className="text-xl font-bold flex items-center gap-2" style={{ color: '#ff0000', fontSize: '1.2rem', margin: 0 }}>
-              <Shield size={24} /> NS Messenger
-            </h1>
-            <span style={{ fontSize: '9px', color: '#666' }}>SECURE CHANNEL ACTIVE</span>
+      <motion.div 
+        initial={false}
+        animate={{ 
+          width: isSidebarOpen ? '320px' : '0px',
+          opacity: isSidebarOpen ? 1 : 0
+        }}
+        className={cn(
+          "h-full bg-[#050505] border-r border-[#1a1a1a] flex flex-col z-40 overflow-hidden relative",
+          !isSidebarOpen && "border-none"
+        )}
+      </motion.div>
+
+      {/* Real Sidebar Content (to keep it stable during animation) */}
+      <div 
+        className="fixed top-0 left-0 h-full flex flex-col bg-[#050505] border-r border-[#1a1a1a] z-40 transition-all duration-300"
+        style={{ width: isSidebarOpen ? '320px' : '0px', visibility: isSidebarOpen ? 'visible' : 'hidden' }}
+      >
+        {/* Sidebar Header */}
+        <div className="p-6 border-b border-[#1a1a1a] flex justify-between items-center bg-[#080808]">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-[#1a0000] rounded-lg text-[#ff0000]">
+              <Shield size={20} />
+            </div>
+            <h1 className="text-lg font-black uppercase tracking-tighter">NS MSGR</h1>
           </div>
-          <button className="text-primary p-2 rounded-full hover:bg-dark-700" style={{ background: 'none', border: 'none', color: '#ff0000', cursor: 'pointer' }}>
-            <Settings size={20} />
+          <button 
+            onClick={() => setIsSidebarOpen(false)}
+            className="p-2 hover:bg-[#111] rounded-lg text-[#444] transition-colors"
+          >
+            <ChevronLeft size={20} />
           </button>
         </div>
 
-        <div className="p-3 bg-dark-900 border-b flex items-center gap-3" style={{ borderBottom: '1px solid #2d2d2d' }}>
-          <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center" style={{ width: '32px', height: '32px', backgroundColor: '#ff0000', borderRadius: '50%', flexShrink: 0 }}>
-            <User size={16} color="white" />
+        {/* User Profile Info */}
+        <div className="p-4 bg-[#0a0a0a] border-b border-[#1a1a1a] flex items-center gap-3 group">
+          <div className="w-10 h-10 bg-[#111] border border-[#222] rounded-full flex items-center justify-center text-[#ff0000]">
+            <User size={20} />
           </div>
-          <div className="flex flex-col truncate">
-            <span style={{ fontSize: '13px', fontWeight: 'bold' }}>{user.name}</span>
-            <span style={{ fontSize: '10px', color: '#666' }}>{user.email}</span>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold truncate uppercase tracking-tight">{user.name}</p>
+            <p className="text-[10px] text-[#444] truncate">{user.email}</p>
           </div>
+          <button onClick={handleLogout} className="p-2 text-[#333] hover:text-[#ff0000] transition-colors">
+            <LogOut size={16} />
+          </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto">
-          {chats.map(chat => (
-            <div 
-              key={chat.id}
-              onClick={() => setActiveChat(chat)}
-              className="p-4 flex items-center gap-3 cursor-pointer transition-colors"
-              style={{ 
-                backgroundColor: activeChat?.id === chat.id ? '#2d2d2d' : 'transparent',
-                borderLeft: activeChat?.id === chat.id ? '4px solid #ff0000' : '4px solid transparent',
-              }}
-            >
-              <div className="w-12 h-12 bg-dark-600 rounded-full flex items-center justify-center" style={{ width: '45px', height: '45px', backgroundColor: '#3d3d3d', borderRadius: '50%', color: '#ff0000', flexShrink: 0 }}>
-                <User size={24} />
-              </div>
-              <div className="flex-1 truncate">
-                <div className="flex justify-between items-center">
-                  <h3 className="font-bold truncate" style={{ margin: 0, fontSize: '14px' }}>{chat.name}</h3>
-                  <span className="text-xs" style={{ color: '#555', fontSize: '10px' }}>{chat.timestamp}</span>
-                </div>
-                <p className="text-sm truncate" style={{ color: '#888', margin: 0, fontSize: '12px' }}>{chat.email}</p>
-              </div>
+        {/* Contacts List */}
+        <div className="flex-1 overflow-y-auto custom-scrollbar">
+          {chats.length === 0 ? (
+            <div className="p-10 text-center">
+              <UserPlus size={40} className="mx-auto mb-4 text-[#111]" />
+              <p className="text-xs text-[#333] uppercase font-bold tracking-widest">Список пуст</p>
             </div>
-          ))}
+          ) : (
+            chats.map(chat => (
+              <div 
+                key={chat.id}
+                onClick={() => setActiveChat(chat)}
+                className={cn(
+                  "p-4 flex items-center gap-4 cursor-pointer transition-all border-b border-[#0a0a0a] group",
+                  activeChat?.id === chat.id ? "bg-[#111] border-l-4 border-l-[#ff0000]" : "hover:bg-[#080808] border-l-4 border-l-transparent"
+                )}
+              >
+                <div className="w-12 h-12 bg-[#111] rounded-xl flex items-center justify-center text-[#444] group-hover:text-[#ff0000] transition-colors">
+                  <User size={24} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex justify-between items-center mb-1">
+                    <h3 className="text-sm font-black uppercase tracking-tight truncate">{chat.name}</h3>
+                    <span className="text-[9px] text-[#333] font-mono">{chat.timestamp}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <p className="text-[11px] text-[#555] truncate">{chat.email}</p>
+                    <button 
+                      onClick={(e) => deleteContact(chat.id, e)}
+                      className="opacity-0 group-hover:opacity-100 p-1 text-[#333] hover:text-[#ff0000] transition-all"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
         </div>
 
-        <div className="p-4 bg-dark-800 border-t" style={{ borderTop: '1px solid #2d2d2d' }}>
-          <button className="w-full bg-primary font-bold p-3 rounded-lg flex items-center justify-center gap-2 cursor-pointer" style={{ width: '100%', backgroundColor: '#ff0000', color: 'white', border: 'none', padding: '10px', borderRadius: '6px', cursor: 'pointer', fontSize: '13px' }}>
+        {/* Add Contact Button */}
+        <div className="p-4 bg-[#080808] border-t border-[#1a1a1a]">
+          <button 
+            onClick={() => setIsAddContactOpen(true)}
+            className="w-full bg-white hover:bg-[#ff0000] text-black hover:text-white py-3 rounded-xl font-black uppercase text-xs tracking-widest flex items-center justify-center gap-2 transition-all active:scale-95"
+          >
             <Plus size={18} /> Добавить контакт
           </button>
         </div>
       </div>
 
       {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col bg-dark-900" style={{ flex: 1, position: 'relative' }}>
+      <div className="flex-1 flex flex-col bg-black relative min-w-0">
+        {!isSidebarOpen && (
+          <button 
+            onClick={() => setIsSidebarOpen(true)}
+            className="absolute top-6 left-6 z-30 p-2 bg-[#111] border border-[#222] rounded-lg text-[#ff0000] hover:bg-[#1a0000] transition-all"
+          >
+            <ChevronRight size={20} />
+          </button>
+        )}
+
         {activeChat ? (
           <>
             {/* Chat Header */}
-            <div className="p-4 bg-dark-800 border-b flex justify-between items-center" style={{ borderBottom: '1px solid #2d2d2d' }}>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-dark-700 rounded-full flex items-center justify-center" style={{ width: '40px', height: '40px', backgroundColor: '#2d2d2d', borderRadius: '50%', color: '#ff0000' }}>
+            <div className="h-20 px-8 bg-[#050505] border-b border-[#1a1a1a] flex justify-between items-center">
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 bg-[#111] border border-[#222] rounded-xl flex items-center justify-center text-[#ff0000]">
                   <User size={20} />
                 </div>
                 <div>
-                  <h2 className="font-bold" style={{ margin: 0, fontSize: '16px' }}>{activeChat.name}</h2>
-                  <div className="flex items-center gap-2" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ fontSize: '10px', color: '#00ff00', display: 'flex', alignItems: 'center', gap: '3px' }}>
-                      <Shield size={10} /> SECURE
+                  <h2 className="text-sm font-black uppercase tracking-widest">{activeChat.name}</h2>
+                  <div className="flex items-center gap-3">
+                    <span className="flex items-center gap-1 text-[9px] text-[#00ff00] font-bold">
+                      <div className="w-1 h-1 bg-[#00ff00] rounded-full animate-pulse" />
+                      ENCRYPTED
                     </span>
-                    <span style={{ fontSize: '10px', color: '#666' }}>{activeChat.email}</span>
+                    <span className="text-[10px] text-[#333]">{activeChat.email}</span>
                   </div>
                 </div>
               </div>
               
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-6">
+                <button 
+                  onClick={handleImportEncrypted}
+                  title="Импорт из почты"
+                  className="p-2 text-[#444] hover:text-[#ff0000] transition-colors"
+                >
+                  <Plus size={20} />
+                </button>
                 <button 
                   onClick={checkInbox}
                   disabled={isTransporting}
-                  style={{ background: 'none', border: 'none', color: '#666', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}
+                  className="p-2 text-[#444] hover:text-white transition-colors disabled:opacity-20"
                 >
-                  <RefreshCw size={16} className={isTransporting ? 'animate-spin' : ''} />
+                  <RefreshCw size={20} className={isTransporting ? 'animate-spin' : ''} />
                 </button>
-                <div style={{ textAlign: 'right', borderLeft: '1px solid #333', paddingLeft: '15px' }}>
-                  <p style={{ fontSize: '8px', color: '#555', margin: 0, textTransform: 'uppercase' }}>Session Key</p>
-                  <p style={{ fontSize: '10px', color: '#ff0000', margin: 0, fontFamily: 'monospace' }}>{sessionKey?.substring(0, 12)}...</p>
+                <div className="hidden md:block pl-6 border-l border-[#1a1a1a] text-right">
+                  <p className="text-[8px] text-[#333] uppercase font-black mb-1">Session Node</p>
+                  <p className="text-[10px] text-[#ff0000] font-mono tracking-tighter">{sessionKey?.substring(0, 16)}</p>
                 </div>
               </div>
             </div>
 
-            {/* Transport Status Overlay */}
-            {isTransporting && (
-              <div style={{ 
-                position: 'absolute', 
-                top: '70px', 
-                left: '50%', 
-                transform: 'translateX(-50%)', 
-                backgroundColor: '#ff0000', 
-                color: 'white', 
-                padding: '4px 15px', 
-                borderRadius: '20px', 
-                fontSize: '10px', 
-                fontWeight: 'bold',
-                zIndex: 10,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                boxShadow: '0 4px 15px rgba(255,0,0,0.3)'
-              }}>
-                <Loader2 size={12} className="animate-spin" />
-                {transportStatus}
-              </div>
-            )}
+            {/* Transport Status */}
+            <AnimatePresence>
+              {isTransporting && (
+                <motion.div 
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="absolute top-24 left-1/2 -translate-x-1/2 z-20"
+                >
+                  <div className="bg-[#ff0000] text-white px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest shadow-xl shadow-[#ff000044] flex items-center gap-2">
+                    <Loader2 size={12} className="animate-spin" />
+                    {transportStatus}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
-            {/* Messages */}
-            <div ref={scrollRef} className="flex-1 overflow-y-auto p-4" style={{ flex: 1, padding: '20px' }}>
+            {/* Messages Area */}
+            <div ref={scrollRef} className="flex-1 overflow-y-auto p-8 custom-scrollbar space-y-6">
               {messages.map((msg) => (
-                <div key={msg.id} className="flex" style={{ display: 'flex', marginBottom: '20px', justifyContent: msg.isSystem ? 'center' : msg.sender === 'me' ? 'flex-end' : 'flex-start' }}>
+                <div 
+                  key={msg.id} 
+                  className={cn(
+                    "flex flex-col",
+                    msg.isSystem ? "items-center" : msg.sender === 'me' ? "items-end" : "items-start"
+                  )}
+                >
                   {msg.isSystem ? (
-                    <span style={{ backgroundColor: '#1a1a1a', color: '#444', fontSize: '9px', padding: '3px 10px', borderRadius: '4px', border: '1px solid #222', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                    <div className="px-4 py-1 bg-[#080808] border border-[#111] rounded text-[9px] text-[#333] uppercase font-bold tracking-[0.2em]">
                       {msg.text}
-                    </span>
+                    </div>
                   ) : (
-                    <div style={{ position: 'relative', maxWidth: '75%' }}>
-                      <div style={{ 
-                        padding: '12px 16px', 
-                        borderRadius: '12px',
-                        backgroundColor: msg.sender === 'me' ? '#ff0000' : '#2d2d2d',
-                        color: 'white',
-                        borderBottomRightRadius: msg.sender === 'me' ? '2px' : '12px',
-                        borderBottomLeftRadius: msg.sender === 'me' ? '12px' : '2px',
-                        boxShadow: '0 2px 10px rgba(0,0,0,0.2)'
-                      }}>
-                        <p style={{ margin: 0, fontSize: '14px', lineHeight: '1.4' }}>{msg.text}</p>
-                        <div style={{ fontSize: '9px', marginTop: '6px', opacity: 0.6, display: 'flex', alignItems: 'center', gap: '5px', justifyContent: 'flex-end' }}>
-                          <span>{msg.timestamp}</span>
-                          {msg.sender === 'me' && (
-                            msg.status === 'sending' ? <Loader2 size={10} className="animate-spin" /> : <CheckCheck size={10} />
-                          )}
-                        </div>
+                    <div className="max-w-[80%] md:max-w-[60%] group">
+                      <div 
+                        className={cn(
+                          "px-5 py-3 rounded-2xl text-sm leading-relaxed shadow-lg",
+                          msg.sender === 'me' 
+                            ? "bg-[#ff0000] text-white rounded-tr-none" 
+                            : "bg-[#111] text-[#ccc] border border-[#1a1a1a] rounded-tl-none"
+                        )}
+                      >
+                        {msg.text}
+                      </div>
+                      <div className={cn(
+                        "flex items-center gap-2 mt-2 px-1 text-[9px] font-bold uppercase tracking-tighter transition-opacity",
+                        msg.sender === 'me' ? "justify-end text-[#444]" : "text-[#333]"
+                      )}>
+                        <span>{msg.timestamp}</span>
+                        {msg.sender === 'me' && (
+                          msg.status === 'sending' ? <Loader2 size={10} className="animate-spin" /> : <CheckCheck size={10} className="text-[#ff0000]" />
+                        )}
                       </div>
                     </div>
                   )}
@@ -348,51 +527,128 @@ function App() {
             </div>
 
             {/* Input Area */}
-            <form onSubmit={handleSendMessage} className="p-4 bg-dark-800 border-t" style={{ padding: '15px', borderTop: '1px solid #2d2d2d' }}>
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <div style={{ flex: 1, position: 'relative' }}>
+            <div className="p-6 bg-[#050505] border-t border-[#1a1a1a]">
+              <form onSubmit={handleSendMessage} className="max-w-4xl mx-auto flex gap-4">
+                <div className="flex-1 relative group">
                   <input 
                     type="text" 
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
-                    placeholder="Зашифрованное сообщение..." 
-                    style={{ width: '100%', backgroundColor: '#2d2d2d', border: 'none', borderRadius: '8px', padding: '14px', color: 'white', outline: 'none', fontSize: '14px' }}
+                    placeholder="Введите защищенное сообщение..." 
+                    className="w-full bg-[#0a0a0a] border border-[#1a1a1a] rounded-2xl py-4 pl-6 pr-14 text-sm text-white placeholder-[#222] outline-none focus:border-[#333] transition-all shadow-inner"
                   />
-                  <div style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', color: '#555' }}>
-                    <Lock size={16} />
+                  <div className="absolute right-5 top-1/2 -translate-y-1/2 text-[#1a1a1a] group-focus-within:text-[#ff0000] transition-colors">
+                    <Lock size={18} />
                   </div>
                 </div>
                 <button 
                   type="submit"
                   disabled={!newMessage.trim() || isTransporting}
-                  style={{ 
-                    backgroundColor: newMessage.trim() ? '#ff0000' : '#333', 
-                    border: 'none', 
-                    borderRadius: '8px', 
-                    width: '50px', 
-                    height: '50px', 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'center', 
-                    color: 'white', 
-                    cursor: newMessage.trim() ? 'pointer' : 'default',
-                  }}
+                  className={cn(
+                    "w-14 h-14 rounded-2xl flex items-center justify-center transition-all active:scale-90 shadow-lg",
+                    newMessage.trim() 
+                      ? "bg-[#ff0000] text-white shadow-[#ff000022] hover:bg-[#cc0000]" 
+                      : "bg-[#0a0a0a] text-[#1a1a1a] border border-[#1a1a1a]"
+                  )}
                 >
-                  <Send size={20} />
+                  <Send size={22} strokeWidth={2.5} />
                 </button>
-              </div>
-            </form>
+              </form>
+            </div>
           </>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center" style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#333' }}>
-            <Mail size={80} style={{ marginBottom: '20px', opacity: 0.1 }} />
-            <h2 style={{ color: '#444', margin: 0 }}>NS Messenger</h2>
-            <p style={{ fontSize: '14px' }}>Выберите контакт для начала общения</p>
+          <div className="flex-1 flex flex-col items-center justify-center p-12 text-center">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="relative mb-8"
+            >
+              <div className="absolute inset-0 bg-[#ff0000] blur-[100px] opacity-10 animate-pulse" />
+              <Shield size={120} className="text-[#080808] relative z-10" strokeWidth={0.5} />
+            </motion.div>
+            <h2 className="text-2xl font-black uppercase tracking-[0.3em] text-[#111] mb-2">NS Messenger</h2>
+            <p className="text-[#222] text-xs font-bold uppercase tracking-widest">Выберите узел для начала передачи данных</p>
           </div>
         )}
       </div>
 
+      {/* Add Contact Modal */}
+      <AnimatePresence>
+        {isAddContactOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsAddContactOpen(false)}
+              className="absolute inset-0 bg-black/90 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-sm bg-[#0a0a0a] border border-[#1a1a1a] rounded-3xl p-8 shadow-2xl"
+            >
+              <h2 className="text-xl font-black uppercase tracking-tighter mb-6 flex items-center gap-3">
+                <UserPlus className="text-[#ff0000]" /> Новый контакт
+              </h2>
+              <form onSubmit={addContact} className="space-y-4">
+                <div>
+                  <label className="text-[10px] font-bold text-[#444] mb-2 block uppercase tracking-widest">Имя / Позывной</label>
+                  <input 
+                    type="text" 
+                    value={newContactName}
+                    onChange={(e) => setNewContactName(e.target.value)}
+                    required
+                    autoFocus
+                    className="w-full bg-[#111] border border-[#222] rounded-xl py-3 px-4 text-white outline-none focus:border-[#ff0000] transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-[#444] mb-2 block uppercase tracking-widest">Почтовый адрес</label>
+                  <input 
+                    type="email" 
+                    value={newContactEmail}
+                    onChange={(e) => setNewContactEmail(e.target.value)}
+                    required
+                    className="w-full bg-[#111] border border-[#222] rounded-xl py-3 px-4 text-white outline-none focus:border-[#ff0000] transition-all"
+                  />
+                </div>
+                <div className="flex gap-3 pt-4">
+                  <button 
+                    type="button"
+                    onClick={() => setIsAddContactOpen(false)}
+                    className="flex-1 py-3 rounded-xl font-bold uppercase text-[10px] tracking-widest border border-[#222] hover:bg-[#111] transition-all"
+                  >
+                    Отмена
+                  </button>
+                  <button 
+                    type="submit"
+                    className="flex-1 bg-[#ff0000] hover:bg-[#cc0000] py-3 rounded-xl font-bold uppercase text-[10px] tracking-widest transition-all"
+                  >
+                    Добавить
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       <style dangerouslySetInnerHTML={{ __html: `
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: #111;
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: #ff0000;
+        }
         @keyframes spin {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }

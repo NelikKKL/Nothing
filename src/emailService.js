@@ -1,51 +1,62 @@
 // Сервис для работы с почтой как транспортом сообщений
 class EmailService {
   constructor() {
-    // Инициализируем хранилище сообщений в localStorage для симуляции реального сервера
+    // Инициализируем хранилище сообщений в localStorage для симуляции 
+    // (позволяет тестировать на одном устройстве между разными "аккаунтами")
     if (!localStorage.getItem('email_transport_db')) {
       localStorage.setItem('email_transport_db', JSON.stringify([]));
     }
   }
 
-  // Отправка сообщения (имитация SMTP)
+  // Отправка сообщения
   async sendAsEmail({ to, from, subject, encryptedBody, metadata }) {
-    console.log(`%c[SMTP] Sending to ${to}...`, 'color: #ff0000; font-weight: bold;');
+    console.log(`%c[TRANSPORT] Sending to ${to}...`, 'color: #ff0000; font-weight: bold;');
     
     const emailEnvelope = {
-      id: `mail_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      id: `msg_${Date.now()}`,
       from,
       to,
       subject: subject || "NS_SECURE_MSG",
       body: encryptedBody,
-      headers: {
-        "X-Mailer": "NS-Messenger-Secure",
-        "X-Session-ID": metadata.sessionId,
-        "Content-Type": "application/x-ns-encrypted"
-      },
+      metadata,
       sentAt: new Date().toISOString(),
-      status: 'delivered'
     };
 
-    // Сохраняем "на сервере" (в localStorage)
+    // 1. Сохраняем локально (для теста на одном устройстве)
     const db = JSON.parse(localStorage.getItem('email_transport_db'));
     db.push(emailEnvelope);
     localStorage.setItem('email_transport_db', JSON.stringify(db));
 
-    // Имитируем задержку сети
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    // 2. Реальная отправка через mailto: (открывает почтовый клиент)
+    // Это гарантирует, что письмо РЕАЛЬНО уйдет по почте
+    const mailtoUrl = `mailto:${to}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(
+      "--- NS MESSENGER ENCRYPTED MESSAGE ---\n\n" + 
+      encryptedBody + 
+      "\n\n--------------------------------------\n" +
+      "Скопируйте текст выше и вставьте в NS Messenger для расшифровки.\n" +
+      "Session ID: " + metadata.sessionId
+    )}`;
+
+    // В Capacitor/Cordova лучше использовать window.open или специализированный плагин,
+    // но для PWA достаточно window.location.href
+    window.location.href = mailtoUrl;
+
+    // Имитируем задержку для UI
+    await new Promise(resolve => setTimeout(resolve, 1000));
     return emailEnvelope;
   }
 
-  // Получение новых сообщений (имитация IMAP/POP3)
+  // Получение новых сообщений (симуляция входящих из localStorage)
   async fetchInbox(myEmail) {
-    console.log(`%c[IMAP] Checking inbox for ${myEmail}...`, 'color: #00ff00;');
-    
     const db = JSON.parse(localStorage.getItem('email_transport_db'));
     // Фильтруем письма, адресованные нам
-    const myEmails = db.filter(mail => mail.to === myEmail);
-    
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    return myEmails;
+    return db.filter(mail => mail.to === myEmail);
+  }
+  
+  // Метод для ручного импорта зашифрованного текста (если пользователь скопировал его из реальной почты)
+  importFromText(text, key) {
+    // Логика парсинга текста и расшифровки
+    // Это мы вызовем из App.jsx
   }
 }
 
